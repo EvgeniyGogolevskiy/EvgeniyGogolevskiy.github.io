@@ -354,11 +354,27 @@
         // FIREBASE И РЕЙТИНГ
         // ========================
 
-        function loadFirebase() {
-            return new Promise((resolve) => {
-                if (window.firebase) return resolve();
-                
-				const firebaseConfig = {
+        let firebaseInitialized = false;
+
+		async function initFirebase() {
+			if (firebaseInitialized) return true;
+			
+			try {
+				const firebaseAppScript = document.createElement('script');
+				firebaseAppScript.src = 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js';
+				
+				const firebaseDatabaseScript = document.createElement('script');
+				firebaseDatabaseScript.src = 'https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js';
+				
+				await new Promise((resolve) => {
+					firebaseAppScript.onload = () => {
+						document.head.appendChild(firebaseDatabaseScript);
+						firebaseDatabaseScript.onload = resolve;
+					};
+					document.head.appendChild(firebaseAppScript);
+				});
+				
+				firebase.initializeApp({
 					apiKey: "AIzaSyAaT1W1dxPT_wqXT0szzSEZB8Is17NEl88",
 					authDomain: "ballpopgame.firebaseapp.com",
 					databaseURL: "https://ballpopgame-default-rtdb.europe-west1.firebasedatabase.app",
@@ -366,103 +382,88 @@
 					storageBucket: "ballpopgame.firebasestorage.app",
 					messagingSenderId: "126598438595",
 					appId: "1:126598438595:web:beeab536049e207f9e0c76"
-				};
-
-                const script = document.createElement('script');
-                script.src = 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js';
-                script.onload = () => {
-                    const scriptDB = document.createElement('script');
-                    scriptDB.src = 'https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js';
-                    scriptDB.onload = () => {
-                        firebase.initializeApp(firebaseConfig);
-                        resolve();
-                    };
-                    document.head.appendChild(scriptDB);
-                };
-                document.head.appendChild(script);
-            });
-        }
+				});
+				
+				firebaseInitialized = true;
+				return true;
+			} catch (error) {
+				console.error("Ошибка инициализации Firebase:", error);
+				return false;
+			}
+		}
 
         async function loadAndShowRanking() {
-            try {
-                await loadFirebase();
-                showGlobalRank();
-            } catch (error) {
-                console.error("Ошибка загрузки Firebase:", error);
-                rankList.innerHTML = "<li>Не удалось загрузить рейтинг</li>";
-                document.getElementById("rankModal").style.display = "block";
-            }
-        }
+			try {
+				const success = await initFirebase();
+				if (!success) {
+					rankList.innerHTML = "<li>Ошибка подключения</li>";
+					document.getElementById("rankModal").style.display = "block";
+					return;
+				}
+				await showGlobalRank();
+			} catch (error) {
+				console.error("Ошибка:", error);
+				rankList.innerHTML = "<li>Ошибка загрузки</li>";
+				document.getElementById("rankModal").style.display = "block";
+			}
+		}
 
-        function saveScore(score) {
-            const userId = Telegram.WebApp.initDataUnsafe?.user?.id || "anon_" + Math.random().toString(36).substr(2, 6);
-            
-            if (score > 1000) {
-                console.warn("Подозрительно высокий счёт:", score);
-                return;
-            }
-            
-            firebase.database().ref('scores/' + userId).set({
-                username: "Player_" + randomInt(1000, 9999),
-                score: score,
-                timestamp: Date.now()
-            }, (error) => {
-                if (error) {
-                    console.error("Ошибка сохранения:", error);
-                } else {
-                    console.log("Счёт сохранён!");
-                }
-            });
-        }
+        async function saveScore(score) {
+			try {
+				const initialized = await initFirebase();
+				if (!initialized) return;
+				
+				const userId = Telegram.WebApp.initDataUnsafe?.user?.id || 
+							"anon_" + Math.random().toString(36).substr(2, 8);
+				
+				await firebase.database().ref('scores/' + userId).set({
+					username: "Player_" + randomInt(1000, 9999),
+					score: score,
+					timestamp: Date.now()
+				});
+				
+				console.log("Счёт сохранён!");
+			} catch (error) {
+				console.error("Ошибка сохранения:", error);
+			}
+		}
 
 		async function showGlobalRank() {
-            document.getElementById("rankTitle").textContent = "Общий рейтинг";
-            document.getElementById("rankModal").style.display = "block";
-            rankList.innerHTML = "<li>Загрузка...</li>";
-
-            try {
-                const snapshot = await firebase.database().ref('scores')
-                    .orderByChild('score')
-                    .limitToLast(10)
-                    .once('value');
-                
-                const data = snapshot.val();
-                displayRanking(data);
-            } catch (error) {
-                console.error("Ошибка загрузки рейтинга:", error);
-                rankList.innerHTML = "<li>Ошибка загрузки рейтинга</li>";
-            }
-        }
-
-		function displayRanking(data) {
-            rankList.innerHTML = "";
-            
-            if (!data) {
-                rankList.innerHTML = "<li>Рейтинг пуст</li>";
-                return;
-            }
-            
-            const scores = [];
-            for (const userId in data) {
-                scores.push({
-                    score: data[userId].score,
-                    timestamp: data[userId].timestamp
-                });
-            }
-            
-            if (scores.length === 0) {
-                rankList.innerHTML = "<li>Рейтинг пуст</li>";
-                return;
-            }
-            
-            scores.sort((a, b) => b.score - a.score);
-            
-            scores.forEach((item, index) => {
-                const li = document.createElement("li");
-                li.textContent = `${index + 1}. ${item.score} очков`;
-                rankList.appendChild(li);
-            });
-        }
+			rankList.innerHTML = "<li>Загрузка...</li>";
+			
+			try {
+				const snapshot = await firebase.database().ref('scores')
+					.orderByChild('score')
+					.limitToLast(10)
+					.once('value');
+				
+				if (!snapshot.exists()) {
+					rankList.innerHTML = "<li>Рейтинг пуст</li>";
+					return;
+				}
+				
+				const scores = [];
+				snapshot.forEach((child) => {
+					scores.push({
+						score: child.val().score,
+						username: child.val().username || "Игрок"
+					});
+				});
+				
+				scores.sort((a, b) => b.score - a.score);
+				rankList.innerHTML = "";
+				
+				scores.forEach((item, index) => {
+					const li = document.createElement("li");
+					li.textContent = `${index + 1}. ${item.username}: ${item.score}`;
+					rankList.appendChild(li);
+				});
+				
+			} catch (error) {
+				console.error("Ошибка загрузки рейтинга:", error);
+				rankList.innerHTML = "<li>Ошибка загрузки</li>";
+			}
+		}
 
         // ========================
         // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
