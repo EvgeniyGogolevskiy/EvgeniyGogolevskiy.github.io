@@ -41,7 +41,7 @@
         #controls {
             padding: 10px;
         }
-        #score, #timer, #highScore {
+        #score, #timer, #highScore, #dangerColor {
             font-size: 18px;
             margin: 5px;
         }
@@ -49,10 +49,11 @@
             background: #0088cc;
             color: white;
             border: none;
-            padding: 10px 15px;
+            padding: 8px 12px;
             margin: 5px;
             border-radius: 5px;
             cursor: pointer;
+            font-size: 14px;
         }
         .danger {
             animation: pulse 1s infinite;
@@ -62,6 +63,27 @@
             50% { box-shadow: 0 0 20px red; }
             100% { box-shadow: 0 0 5px red; }
         }
+        /* Модальные окна */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            color: white;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .modal-content {
+            background: #333;
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+            border-radius: 10px;
+        }
     </style>
 </head>
 <body>
@@ -70,44 +92,89 @@
         <div id="score">Score: 0</div>
         <div id="timer">Time: 60</div>
         <div id="highScore">High Score: 0</div>
+        <div id="dangerColor">Не лопать: <span style="color: red;">Красный</span></div>
         <button id="startBtn">Start Game</button>
+        <button id="helpBtn">Инструкция</button>
+        <button id="globalRankBtn">Общий рейтинг</button>
     </div>
     <div id="game"></div>
 
-    <script>
-        // Конфигурация
-        const GAME_DURATION = 60; // 60 секунд
-        const BALL_SIZE_MIN = 40;
-        const BALL_SIZE_MAX = 80;
-        const DANGER_BALL_COLOR = "red"; // Запрещённый цвет
+    <!-- Модальное окно инструкции -->
+    <div id="helpModal" class="modal">
+        <div class="modal-content">
+            <h2>Правила игры</h2>
+            <p>🔹 Цель: лопай шарики, но избегай <span id="helpDangerColor" style="color: red;">запрещённого цвета</span>!</p>
+            <p>🔹 Запрещённый цвет меняется случайно.</p>
+            <p>🔹 Если лопнешь запрещённый — игра окончена.</p>
+            <button id="closeHelp" style="margin-top: 20px;">Понятно</button>
+        </div>
+    </div>
 
-        // Переменные
+    <!-- Модальное окно рейтинга -->
+    <div id="rankModal" class="modal">
+        <div class="modal-content">
+            <h2 id="rankTitle">Общий рейтинг</h2>
+            <ol id="rankList"></ol>
+            <button id="closeRank" style="margin-top: 20px;">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Firebase (замени конфиг на свой!) -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
+    <script>
+        // Конфигурация Firebase
+        const firebaseConfig = {
+            apiKey: "ВАШ_API_KEY",
+            authDomain: "ВАШ_PROJECT.firebaseapp.com",
+            databaseURL: "https://ВАШ_PROJECT.firebaseio.com",
+            projectId: "ВАШ_PROJECT",
+            storageBucket: "ВАШ_PROJECT.appspot.com",
+            messagingSenderId: "ВАШ_SENDER_ID"
+        };
+        firebase.initializeApp(firebaseConfig);
+
+        // Конфигурация игры
+        const GAME_DURATION = 60;
+        const BALL_SIZE_MIN = 30;
+        const BALL_SIZE_MAX = 60;
+        const ballColors = ["#4CAF50", "#2196F3", "#FFC107", "#9C27B0", "#00BCD4", "#FF5722", "#673AB7", "#8BC34A"];
+        const dangerColorNames = {
+            "red": "Красный",
+            "#4CAF50": "Зелёный",
+            "#2196F3": "Синий",
+            "#FFC107": "Жёлтый",
+            "#9C27B0": "Фиолетовый"
+        };
+
+        // Переменные игры
         let score = 0;
         let timeLeft = GAME_DURATION;
         let highScore = localStorage.getItem("highScore") || 0;
-        let gameInterval;
-        let timerInterval;
-        let currentDangerColor = DANGER_BALL_COLOR;
+        let currentDangerColor = "red";
         let isGameRunning = false;
+        let gameInterval, timerInterval, colorChangeInterval;
 
         // Элементы DOM
         const gameArea = document.getElementById("game");
         const scoreDisplay = document.getElementById("score");
         const timerDisplay = document.getElementById("timer");
         const highScoreDisplay = document.getElementById("highScore");
+        const dangerColorDisplay = document.querySelector("#dangerColor span");
         const startBtn = document.getElementById("startBtn");
-
-        // Цвета шаров (исключая красный)
-        const ballColors = [
-            "#4CAF50", "#2196F3", "#FFC107", "#9C27B0", 
-            "#00BCD4", "#FF5722", "#673AB7", "#8BC34A"
-        ];
+        const helpBtn = document.getElementById("helpBtn");
+        const globalRankBtn = document.getElementById("globalRankBtn");
 
         // Инициализация
-        highScoreDisplay.textContent = `High Score: ${highScore}`;
+        highScoreDisplay.textContent = highScore;
+        document.getElementById("helpDangerColor").style.color = currentDangerColor;
 
         // Запуск игры
         startBtn.addEventListener("click", startGame);
+        helpBtn.addEventListener("click", showHelp);
+        globalRankBtn.addEventListener("click", showGlobalRank);
+        document.getElementById("closeHelp").addEventListener("click", hideHelp);
+        document.getElementById("closeRank").addEventListener("click", hideRank);
 
         function startGame() {
             if (isGameRunning) return;
@@ -121,13 +188,14 @@
                 timeLeft--;
                 timerDisplay.textContent = `Time: ${timeLeft}`;
                 
-                if (timeLeft <= 0) {
-                    endGame();
-                }
+                if (timeLeft <= 0) endGame();
             }, 1000);
             
             // Генерация шаров
-            gameInterval = setInterval(createBall, 800);
+            gameInterval = setInterval(createBall, 400);
+            
+            // Смена запрещённого цвета
+            colorChangeInterval = setInterval(changeDangerColor, randomInt(5000, 15000));
         }
 
         function createBall() {
@@ -136,13 +204,11 @@
             const ball = document.createElement("div");
             ball.className = "ball";
             
-            // Случайные параметры
             const size = randomInt(BALL_SIZE_MIN, BALL_SIZE_MAX);
             const x = randomInt(0, gameArea.offsetWidth - size);
             const y = randomInt(0, gameArea.offsetHeight - size);
-            const isDanger = Math.random() < 0.2; // 20% шанс опасного шара
+            const isDanger = Math.random() < 0.2;
             
-            // Настройка шара
             ball.style.width = `${size}px`;
             ball.style.height = `${size}px`;
             ball.style.left = `${x}px`;
@@ -156,18 +222,12 @@
                 ball.style.background = ballColors[randomInt(0, ballColors.length - 1)];
             }
             
-            // Обработчики событий
             ball.addEventListener("touchstart", handleSwipeStart);
             ball.addEventListener("mousedown", handleBallClick);
             
             gameArea.appendChild(ball);
             
-            // Автоудаление через 3 сек
-            setTimeout(() => {
-                if (ball.parentNode) {
-                    ball.remove();
-                }
-            }, 3000);
+            setTimeout(() => ball.remove(), 2000);
         }
 
         function handleBallClick(e) {
@@ -193,9 +253,8 @@
             const ball = e.target;
             
             if (ball.dataset.danger === "true") {
-                if (Math.abs(touchEndX - touchStartX) > 50) { // Минимальный свайп
-                    // Меняем запрещённый цвет
-                    currentDangerColor = ballColors[randomInt(0, ballColors.length - 1)];
+                if (Math.abs(touchEndX - touchStartX) > 50) {
+                    changeDangerColor();
                     ball.remove();
                 } else {
                     endGame();
@@ -203,34 +262,95 @@
             }
         }
 
+        function changeDangerColor() {
+            const colors = Object.keys(dangerColorNames);
+            currentDangerColor = colors[Math.floor(Math.random() * colors.length)];
+            dangerColorDisplay.textContent = dangerColorNames[currentDangerColor];
+            dangerColorDisplay.style.color = currentDangerColor;
+            document.getElementById("helpDangerColor").style.color = currentDangerColor;
+        }
+
         function endGame() {
             isGameRunning = false;
             clearInterval(gameInterval);
             clearInterval(timerInterval);
+            clearInterval(colorChangeInterval);
             startBtn.disabled = false;
             
-            // Обновление рекорда
             if (score > highScore) {
                 highScore = score;
                 localStorage.setItem("highScore", highScore);
-                highScoreDisplay.textContent = `High Score: ${highScore}`;
+                highScoreDisplay.textContent = highScore;
             }
             
+            saveScore(score);
             alert(`Game Over! Your score: ${score}`);
         }
 
         function resetGame() {
-            // Очистка поля
             gameArea.innerHTML = "";
             score = 0;
             timeLeft = GAME_DURATION;
             scoreDisplay.textContent = `Score: ${score}`;
             timerDisplay.textContent = `Time: ${timeLeft}`;
-            currentDangerColor = DANGER_BALL_COLOR;
+            currentDangerColor = "red";
+            dangerColorDisplay.textContent = "Красный";
+            dangerColorDisplay.style.color = "red";
         }
 
         function randomInt(min, max) {
             return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        // Модальные окна
+        function showHelp() {
+            document.getElementById("helpModal").style.display = "block";
+        }
+
+        function hideHelp() {
+            document.getElementById("helpModal").style.display = "none";
+        }
+
+        function showGlobalRank() {
+            document.getElementById("rankTitle").textContent = "Общий рейтинг";
+            loadRanking(true);
+            document.getElementById("rankModal").style.display = "block";
+        }
+
+        function hideRank() {
+            document.getElementById("rankModal").style.display = "none";
+        }
+
+        // Firebase: сохранение результата
+        function saveScore(score) {
+            const userId = Telegram.WebApp.initDataUnsafe?.user?.id || "anon_" + Math.random().toString(36).substr(2, 9);
+            firebase.database().ref('scores/' + userId).set({
+                username: "Player_" + randomInt(1000, 9999),
+                score: score,
+                timestamp: Date.now()
+            });
+        }
+
+        // Firebase: загрузка рейтинга
+        function loadRanking(isGlobal) {
+            const rankList = document.getElementById("rankList");
+            rankList.innerHTML = "<li>Загрузка...</li>";
+            
+            firebase.database().ref('scores').orderByChild('score').limitToLast(10).once('value').then((snapshot) => {
+                const scores = [];
+                snapshot.forEach((child) => {
+                    scores.push(child.val());
+                });
+                
+                scores.sort((a, b) => b.score - a.score);
+                rankList.innerHTML = "";
+                
+                scores.forEach((item, index) => {
+                    const li = document.createElement("li");
+                    li.textContent = `${index + 1}. ${item.username}: ${item.score}`;
+                    rankList.appendChild(li);
+                });
+            });
         }
     </script>
 </body>
