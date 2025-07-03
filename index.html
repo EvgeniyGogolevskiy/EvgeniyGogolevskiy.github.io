@@ -142,13 +142,21 @@
         const GAME_DURATION = 60;
         const BALL_SIZE_MIN = 30;
         const BALL_SIZE_MAX = 60;
-        const ballColors = ["#4CAF50", "#2196F3", "#FFC107", "#9C27B0", "#00BCD4", "#FF5722", "#673AB7", "#8BC34A"];
+        const ballColors = [
+            "#FF0000", // Красный
+            "#0000FF", // Синий
+            "#00FF00", // Зелёный
+            "#FFFF00", // Жёлтый
+            "#FFFFFF", // Белый
+            "#800080"  // Фиолетовый
+        ];
         const dangerColorNames = {
-            "red": "Красный",
-            "#4CAF50": "Зелёный",
-            "#2196F3": "Синий",
-            "#FFC107": "Жёлтый",
-            "#9C27B0": "Фиолетовый"
+            "#FF0000": "Красный",
+            "#0000FF": "Синий",
+            "#00FF00": "Зелёный",
+            "#FFFF00": "Жёлтый",
+            "#FFFFFF": "Белый",
+            "#800080": "Фиолетовый"
         };
 
         // Переменные игры
@@ -391,40 +399,37 @@
             });
         }
 
-        async function showGlobalRank() {
+		async function showGlobalRank() {
             document.getElementById("rankTitle").textContent = "Общий рейтинг";
-            
-            // Проверяем кеш
-            const cachedRank = localStorage.getItem('cachedRank');
-            const cacheTime = localStorage.getItem('cacheTime');
-            
-            if (cachedRank && Date.now() - cacheTime < 300000) { // 5 минут кеш
-                displayRanking(JSON.parse(cachedRank));
-            } else {
-                rankList.innerHTML = "<li>Загрузка...</li>";
-                document.getElementById("rankModal").style.display = "block";
+            document.getElementById("rankModal").style.display = "block";
+            rankList.innerHTML = "<li>Загрузка...</li>";
+
+            try {
+                const snapshot = await firebase.database().ref('scores')
+                    .orderByChild('score')
+                    .limitToLast(10)
+                    .once('value');
                 
-                try {
-                    const snapshot = await firebase.database().ref('scores')
-                        .orderByChild('score')
-                        .limitToLast(10)
-                        .once('value');
-                    
-                    const data = snapshot.val() || {};
-                    localStorage.setItem('cachedRank', JSON.stringify(data));
-                    localStorage.setItem('cacheTime', Date.now());
-                    
-                    displayRanking(data);
-                } catch (error) {
-                    rankList.innerHTML = "<li>Ошибка загрузки</li>";
-                    console.error("Firebase error:", error);
-                }
+                const data = snapshot.val() || {};
+                localStorage.setItem('cachedRank', JSON.stringify(data));
+                localStorage.setItem('cacheTime', Date.now());
+                
+                displayRanking(data);
+            } catch (error) {
+                console.error("Ошибка загрузки рейтинга:", error);
+                rankList.innerHTML = "<li>Ошибка загрузки рейтинга</li>";
             }
         }
 
         function displayRanking(data) {
-            const scores = [];
+            rankList.innerHTML = "";
             
+            if (!data || Object.keys(data).length === 0) {
+                rankList.innerHTML = "<li>Рейтинг пуст</li>";
+                return;
+            }
+            
+            const scores = [];
             for (const userId in data) {
                 scores.push({
                     score: data[userId].score,
@@ -433,12 +438,6 @@
             }
             
             scores.sort((a, b) => b.score - a.score);
-            rankList.innerHTML = "";
-            
-            if (scores.length === 0) {
-                rankList.innerHTML = "<li>Рейтинг пуст</li>";
-                return;
-            }
             
             scores.forEach((item, index) => {
                 const li = document.createElement("li");
