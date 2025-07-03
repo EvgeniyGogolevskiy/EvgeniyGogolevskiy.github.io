@@ -22,6 +22,7 @@
             overflow: hidden;
             border: 2px solid #444;
             background: #2a2a2a;
+            transition: background 0.3s;
         }
         .ball {
             position: absolute;
@@ -84,18 +85,27 @@
             padding: 20px;
             border-radius: 10px;
         }
+        /* Анимация смены цвета */
+        @keyframes flash {
+            0% { background-color: inherit; }
+            50% { background-color: var(--flash-color); }
+            100% { background-color: inherit; }
+        }
+        .flash-effect {
+            animation: flash 0.5s ease-out;
+        }
     </style>
 </head>
 <body>
     <h1>Ball Pop Game</h1>
     <div id="controls">
-        <div id="score">Score: 0</div>
-        <div id="timer">Time: 60</div>
-        <div id="highScore">High Score: 0</div>
+        <div id="score">Очки: 0</div>
+        <div id="timer">Время: 60</div>
+        <div id="highScore">Лучший счёт: 0</div>
         <div id="dangerColor">Не лопать: <span style="color: red;">Красный</span></div>
-        <button id="startBtn">Start Game</button>
+        <button id="startBtn">Начать игру</button>
         <button id="helpBtn">Инструкция</button>
-        <button id="globalRankBtn">Общий рейтинг</button>
+        <button id="globalRankBtn">Рейтинг</button>
     </div>
     <div id="game"></div>
 
@@ -110,16 +120,16 @@
         </div>
     </div>
 
-    <!-- Модальное окно рейтинга -->
-    <div id="rankModal" class="modal">
+    <!-- Модальное окно Game Over -->
+    <div id="gameOverModal" class="modal">
         <div class="modal-content">
-            <h2 id="rankTitle">Общий рейтинг</h2>
-            <ol id="rankList"></ol>
-            <button id="closeRank" style="margin-top: 20px;">Закрыть</button>
+            <h2>Игра окончена!</h2>
+            <p id="finalScore">Ваш счёт: 0</p>
+            <button id="closeGameOver" style="margin-top: 20px;">OK</button>
         </div>
     </div>
 
-    <!-- Firebase (замени конфиг на свой!) -->
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
     <script>
@@ -164,9 +174,11 @@
         const startBtn = document.getElementById("startBtn");
         const helpBtn = document.getElementById("helpBtn");
         const globalRankBtn = document.getElementById("globalRankBtn");
+        const finalScoreDisplay = document.getElementById("finalScore");
+        const gameOverModal = document.getElementById("gameOverModal");
 
         // Инициализация
-        highScoreDisplay.textContent = highScore;
+        highScoreDisplay.textContent = `Лучший счёт: ${highScore}`;
         document.getElementById("helpDangerColor").style.color = currentDangerColor;
 
         // Запуск игры
@@ -174,7 +186,7 @@
         helpBtn.addEventListener("click", showHelp);
         globalRankBtn.addEventListener("click", showGlobalRank);
         document.getElementById("closeHelp").addEventListener("click", hideHelp);
-        document.getElementById("closeRank").addEventListener("click", hideRank);
+        document.getElementById("closeGameOver").addEventListener("click", hideGameOver);
 
         function startGame() {
             if (isGameRunning) return;
@@ -186,7 +198,7 @@
             // Таймер
             timerInterval = setInterval(() => {
                 timeLeft--;
-                timerDisplay.textContent = `Time: ${timeLeft}`;
+                timerDisplay.textContent = `Время: ${timeLeft}`;
                 
                 if (timeLeft <= 0) endGame();
             }, 1000);
@@ -196,6 +208,9 @@
             
             // Смена запрещённого цвета
             colorChangeInterval = setInterval(changeDangerColor, randomInt(5000, 15000));
+            
+            // Анимация начала игры (красный)
+            flashBackground(currentDangerColor);
         }
 
         function createBall() {
@@ -237,7 +252,7 @@
                 endGame();
             } else {
                 score++;
-                scoreDisplay.textContent = `Score: ${score}`;
+                scoreDisplay.textContent = `Очки: ${score}`;
                 ball.remove();
             }
         }
@@ -268,6 +283,18 @@
             dangerColorDisplay.textContent = dangerColorNames[currentDangerColor];
             dangerColorDisplay.style.color = currentDangerColor;
             document.getElementById("helpDangerColor").style.color = currentDangerColor;
+            
+            // Анимация смены цвета
+            flashBackground(currentDangerColor);
+        }
+
+        function flashBackground(color) {
+            gameArea.style.setProperty('--flash-color', color);
+            gameArea.classList.add('flash-effect');
+            
+            setTimeout(() => {
+                gameArea.classList.remove('flash-effect');
+            }, 500);
         }
 
         function endGame() {
@@ -277,22 +304,26 @@
             clearInterval(colorChangeInterval);
             startBtn.disabled = false;
             
+            // Показываем Game Over
+            finalScoreDisplay.textContent = `Ваш счёт: ${score}`;
+            gameOverModal.style.display = "block";
+            
+            // Обновляем рекорд
             if (score > highScore) {
                 highScore = score;
                 localStorage.setItem("highScore", highScore);
-                highScoreDisplay.textContent = highScore;
+                highScoreDisplay.textContent = `Лучший счёт: ${highScore}`;
             }
             
             saveScore(score);
-            alert(`Game Over! Your score: ${score}`);
         }
 
         function resetGame() {
             gameArea.innerHTML = "";
             score = 0;
             timeLeft = GAME_DURATION;
-            scoreDisplay.textContent = `Score: ${score}`;
-            timerDisplay.textContent = `Time: ${timeLeft}`;
+            scoreDisplay.textContent = `Очки: ${score}`;
+            timerDisplay.textContent = `Время: ${timeLeft}`;
             currentDangerColor = "red";
             dangerColorDisplay.textContent = "Красный";
             dangerColorDisplay.style.color = "red";
@@ -311,14 +342,14 @@
             document.getElementById("helpModal").style.display = "none";
         }
 
+        function hideGameOver() {
+            gameOverModal.style.display = "none";
+        }
+
         function showGlobalRank() {
             document.getElementById("rankTitle").textContent = "Общий рейтинг";
             loadRanking(true);
             document.getElementById("rankModal").style.display = "block";
-        }
-
-        function hideRank() {
-            document.getElementById("rankModal").style.display = "none";
         }
 
         // Firebase: сохранение результата
@@ -328,28 +359,6 @@
                 username: "Player_" + randomInt(1000, 9999),
                 score: score,
                 timestamp: Date.now()
-            });
-        }
-
-        // Firebase: загрузка рейтинга
-        function loadRanking(isGlobal) {
-            const rankList = document.getElementById("rankList");
-            rankList.innerHTML = "<li>Загрузка...</li>";
-            
-            firebase.database().ref('scores').orderByChild('score').limitToLast(10).once('value').then((snapshot) => {
-                const scores = [];
-                snapshot.forEach((child) => {
-                    scores.push(child.val());
-                });
-                
-                scores.sort((a, b) => b.score - a.score);
-                rankList.innerHTML = "";
-                
-                scores.forEach((item, index) => {
-                    const li = document.createElement("li");
-                    li.textContent = `${index + 1}. ${item.username}: ${item.score}`;
-                    rankList.appendChild(li);
-                });
             });
         }
     </script>
