@@ -22,7 +22,6 @@
             overflow: hidden;
             border: 2px solid #444;
             background: #2a2a2a;
-            transition: background 0.3s;
         }
         .ball {
             position: absolute;
@@ -87,9 +86,9 @@
         }
         /* Анимация смены цвета */
         @keyframes flash {
-            0% { background-color: inherit; }
-            50% { background-color: var(--flash-color); }
-            100% { background-color: inherit; }
+            0% { opacity: 0.7; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
         }
         .flash-effect {
             animation: flash 0.5s ease-out;
@@ -129,21 +128,16 @@
         </div>
     </div>
 
-    <!-- Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
-    <script>
-        // Конфигурация Firebase
-        const firebaseConfig = {
-            apiKey: "ВАШ_API_KEY",
-            authDomain: "ВАШ_PROJECT.firebaseapp.com",
-            databaseURL: "https://ВАШ_PROJECT.firebaseio.com",
-            projectId: "ВАШ_PROJECT",
-            storageBucket: "ВАШ_PROJECT.appspot.com",
-            messagingSenderId: "ВАШ_SENDER_ID"
-        };
-        firebase.initializeApp(firebaseConfig);
+    <!-- Модальное окно рейтинга -->
+    <div id="rankModal" class="modal">
+        <div class="modal-content">
+            <h2 id="rankTitle">Общий рейтинг</h2>
+            <ol id="rankList"></ol>
+            <button id="closeRank" style="margin-top: 20px;">Закрыть</button>
+        </div>
+    </div>
 
+    <script>
         // Конфигурация игры
         const GAME_DURATION = 60;
         const BALL_SIZE_MIN = 30;
@@ -176,6 +170,7 @@
         const globalRankBtn = document.getElementById("globalRankBtn");
         const finalScoreDisplay = document.getElementById("finalScore");
         const gameOverModal = document.getElementById("gameOverModal");
+        const rankList = document.getElementById("rankList");
 
         // Инициализация
         highScoreDisplay.textContent = `Лучший счёт: ${highScore}`;
@@ -184,9 +179,14 @@
         // Запуск игры
         startBtn.addEventListener("click", startGame);
         helpBtn.addEventListener("click", showHelp);
-        globalRankBtn.addEventListener("click", showGlobalRank);
+        globalRankBtn.addEventListener("click", loadAndShowRanking);
         document.getElementById("closeHelp").addEventListener("click", hideHelp);
         document.getElementById("closeGameOver").addEventListener("click", hideGameOver);
+        document.getElementById("closeRank").addEventListener("click", hideRank);
+
+        // ========================
+        // ОСНОВНЫЕ ФУНКЦИИ ИГРЫ
+        // ========================
 
         function startGame() {
             if (isGameRunning) return;
@@ -209,7 +209,7 @@
             // Смена запрещённого цвета
             colorChangeInterval = setInterval(changeDangerColor, randomInt(5000, 15000));
             
-            // Анимация начала игры (красный)
+            // Анимация начала игры
             flashBackground(currentDangerColor);
         }
 
@@ -242,7 +242,9 @@
             
             gameArea.appendChild(ball);
             
-            setTimeout(() => ball.remove(), 2000);
+            setTimeout(() => {
+                if (ball.parentNode) ball.remove();
+            }, 1000);
         }
 
         function handleBallClick(e) {
@@ -257,18 +259,17 @@
             }
         }
 
-        let touchStartX = 0;
         function handleSwipeStart(e) {
-            touchStartX = e.touches[0].clientX;
+            e.target.touchStartX = e.touches[0].clientX;
             e.target.addEventListener("touchend", handleSwipeEnd);
         }
 
         function handleSwipeEnd(e) {
-            const touchEndX = e.changedTouches[0].clientX;
             const ball = e.target;
+            const touchEndX = e.changedTouches[0].clientX;
             
             if (ball.dataset.danger === "true") {
-                if (Math.abs(touchEndX - touchStartX) > 50) {
+                if (Math.abs(touchEndX - ball.touchStartX) > 50) {
                     changeDangerColor();
                     ball.remove();
                 } else {
@@ -284,16 +285,15 @@
             dangerColorDisplay.style.color = currentDangerColor;
             document.getElementById("helpDangerColor").style.color = currentDangerColor;
             
-            // Анимация смены цвета
             flashBackground(currentDangerColor);
         }
 
         function flashBackground(color) {
-            gameArea.style.setProperty('--flash-color', color);
-            gameArea.classList.add('flash-effect');
-            
+            gameArea.style.backgroundColor = color;
+            gameArea.classList.add("flash-effect");
             setTimeout(() => {
-                gameArea.classList.remove('flash-effect');
+                gameArea.style.backgroundColor = "#2a2a2a";
+                gameArea.classList.remove("flash-effect");
             }, 500);
         }
 
@@ -304,7 +304,7 @@
             clearInterval(colorChangeInterval);
             startBtn.disabled = false;
             
-            // Показываем Game Over
+            // Показываем результат
             finalScoreDisplay.textContent = `Ваш счёт: ${score}`;
             gameOverModal.style.display = "block";
             
@@ -315,7 +315,10 @@
                 highScoreDisplay.textContent = `Лучший счёт: ${highScore}`;
             }
             
-            saveScore(score);
+            // Сохраняем в Firebase (если подключен)
+            if (window.firebase) {
+                saveScore(score);
+            }
         }
 
         function resetGame() {
@@ -329,11 +332,129 @@
             dangerColorDisplay.style.color = "red";
         }
 
+        // ========================
+        // FIREBASE И РЕЙТИНГ
+        // ========================
+
+        function loadFirebase() {
+            return new Promise((resolve) => {
+                if (window.firebase) return resolve();
+                
+				const firebaseConfig = {
+					apiKey: "AIzaSyAaT1W1dxPT_wqXT0szzSEZB8Is17NEl88",
+					authDomain: "ballpopgame.firebaseapp.com",
+					databaseURL: "https://ballpopgame-default-rtdb.europe-west1.firebasedatabase.app",
+					projectId: "ballpopgame",
+					storageBucket: "ballpopgame.firebasestorage.app",
+					messagingSenderId: "126598438595",
+					appId: "1:126598438595:web:beeab536049e207f9e0c76"
+				};
+
+                const script = document.createElement('script');
+                script.src = 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js';
+                script.onload = () => {
+                    const scriptDB = document.createElement('script');
+                    scriptDB.src = 'https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js';
+                    scriptDB.onload = () => {
+                        firebase.initializeApp(firebaseConfig);
+                        resolve();
+                    };
+                    document.head.appendChild(scriptDB);
+                };
+                document.head.appendChild(script);
+            });
+        }
+
+        async function loadAndShowRanking() {
+            try {
+                await loadFirebase();
+                showGlobalRank();
+            } catch (error) {
+                console.error("Ошибка загрузки Firebase:", error);
+                rankList.innerHTML = "<li>Не удалось загрузить рейтинг</li>";
+                document.getElementById("rankModal").style.display = "block";
+            }
+        }
+
+        function saveScore(score) {
+            const userId = Telegram.WebApp.initDataUnsafe?.user?.id || "anon_" + Math.random().toString(36).substr(2, 6);
+            
+            // Защита от нереальных значений
+            if (score > 500) {
+                console.warn("Подозрительно высокий счёт:", score);
+                return;
+            }
+            
+            firebase.database().ref('scores/' + userId).set({
+                score: score,
+                timestamp: Date.now()
+            });
+        }
+
+        async function showGlobalRank() {
+            document.getElementById("rankTitle").textContent = "Общий рейтинг";
+            
+            // Проверяем кеш
+            const cachedRank = localStorage.getItem('cachedRank');
+            const cacheTime = localStorage.getItem('cacheTime');
+            
+            if (cachedRank && Date.now() - cacheTime < 300000) { // 5 минут кеш
+                displayRanking(JSON.parse(cachedRank));
+            } else {
+                rankList.innerHTML = "<li>Загрузка...</li>";
+                document.getElementById("rankModal").style.display = "block";
+                
+                try {
+                    const snapshot = await firebase.database().ref('scores')
+                        .orderByChild('score')
+                        .limitToLast(10)
+                        .once('value');
+                    
+                    const data = snapshot.val() || {};
+                    localStorage.setItem('cachedRank', JSON.stringify(data));
+                    localStorage.setItem('cacheTime', Date.now());
+                    
+                    displayRanking(data);
+                } catch (error) {
+                    rankList.innerHTML = "<li>Ошибка загрузки</li>";
+                    console.error("Firebase error:", error);
+                }
+            }
+        }
+
+        function displayRanking(data) {
+            const scores = [];
+            
+            for (const userId in data) {
+                scores.push({
+                    score: data[userId].score,
+                    timestamp: data[userId].timestamp
+                });
+            }
+            
+            scores.sort((a, b) => b.score - a.score);
+            rankList.innerHTML = "";
+            
+            if (scores.length === 0) {
+                rankList.innerHTML = "<li>Рейтинг пуст</li>";
+                return;
+            }
+            
+            scores.forEach((item, index) => {
+                const li = document.createElement("li");
+                li.textContent = `${index + 1}. ${item.score} очков`;
+                rankList.appendChild(li);
+            });
+        }
+
+        // ========================
+        // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+        // ========================
+
         function randomInt(min, max) {
             return Math.floor(Math.random() * (max - min + 1)) + min;
         }
 
-        // Модальные окна
         function showHelp() {
             document.getElementById("helpModal").style.display = "block";
         }
@@ -346,20 +467,8 @@
             gameOverModal.style.display = "none";
         }
 
-        function showGlobalRank() {
-            document.getElementById("rankTitle").textContent = "Общий рейтинг";
-            loadRanking(true);
-            document.getElementById("rankModal").style.display = "block";
-        }
-
-        // Firebase: сохранение результата
-        function saveScore(score) {
-            const userId = Telegram.WebApp.initDataUnsafe?.user?.id || "anon_" + Math.random().toString(36).substr(2, 9);
-            firebase.database().ref('scores/' + userId).set({
-                username: "Player_" + randomInt(1000, 9999),
-                score: score,
-                timestamp: Date.now()
-            });
+        function hideRank() {
+            document.getElementById("rankModal").style.display = "none";
         }
     </script>
 </body>
