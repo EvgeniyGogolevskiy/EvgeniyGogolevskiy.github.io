@@ -215,7 +215,7 @@
             gameInterval = setInterval(createBall, 400);
             
             // Смена запрещённого цвета
-            colorChangeInterval = setInterval(changeDangerColor, randomInt(5000, 15000));
+            colorChangeInterval = setInterval(changeDangerColor, randomInt(5000, 10000));
             
             // Анимация начала игры
             flashBackground(currentDangerColor);
@@ -230,19 +230,29 @@
             const size = randomInt(BALL_SIZE_MIN, BALL_SIZE_MAX);
             const x = randomInt(0, gameArea.offsetWidth - size);
             const y = randomInt(0, gameArea.offsetHeight - size);
+            
+            // 20% шанс, что шар будет запрещённого цвета
             const isDanger = Math.random() < 0.2;
+            const color = isDanger ? currentDangerColor : 
+                         ballColors[randomInt(0, ballColors.length - 1)];
+            
+            // Убедимся, что обычный шар не совпадает с запрещённым цветом
+            let safeColor = color;
+            if (!isDanger) {
+                while (safeColor === currentDangerColor) {
+                    safeColor = ballColors[randomInt(0, ballColors.length - 1)];
+                }
+            }
             
             ball.style.width = `${size}px`;
             ball.style.height = `${size}px`;
             ball.style.left = `${x}px`;
             ball.style.top = `${y}px`;
+            ball.style.background = isDanger ? currentDangerColor : safeColor;
             
             if (isDanger) {
-                ball.style.background = currentDangerColor;
                 ball.classList.add("danger");
                 ball.dataset.danger = "true";
-            } else {
-                ball.style.background = ballColors[randomInt(0, ballColors.length - 1)];
             }
             
             ball.addEventListener("touchstart", handleSwipeStart);
@@ -387,15 +397,21 @@
         function saveScore(score) {
             const userId = Telegram.WebApp.initDataUnsafe?.user?.id || "anon_" + Math.random().toString(36).substr(2, 6);
             
-            // Защита от нереальных значений
-            if (score > 500) {
+            if (score > 1000) {
                 console.warn("Подозрительно высокий счёт:", score);
                 return;
             }
             
             firebase.database().ref('scores/' + userId).set({
+                username: "Player_" + randomInt(1000, 9999),
                 score: score,
                 timestamp: Date.now()
+            }, (error) => {
+                if (error) {
+                    console.error("Ошибка сохранения:", error);
+                } else {
+                    console.log("Счёт сохранён!");
+                }
             });
         }
 
@@ -410,10 +426,7 @@
                     .limitToLast(10)
                     .once('value');
                 
-                const data = snapshot.val() || {};
-                localStorage.setItem('cachedRank', JSON.stringify(data));
-                localStorage.setItem('cacheTime', Date.now());
-                
+                const data = snapshot.val();
                 displayRanking(data);
             } catch (error) {
                 console.error("Ошибка загрузки рейтинга:", error);
@@ -421,10 +434,10 @@
             }
         }
 
-        function displayRanking(data) {
+		function displayRanking(data) {
             rankList.innerHTML = "";
             
-            if (!data || Object.keys(data).length === 0) {
+            if (!data) {
                 rankList.innerHTML = "<li>Рейтинг пуст</li>";
                 return;
             }
@@ -435,6 +448,11 @@
                     score: data[userId].score,
                     timestamp: data[userId].timestamp
                 });
+            }
+            
+            if (scores.length === 0) {
+                rankList.innerHTML = "<li>Рейтинг пуст</li>";
+                return;
             }
             
             scores.sort((a, b) => b.score - a.score);
