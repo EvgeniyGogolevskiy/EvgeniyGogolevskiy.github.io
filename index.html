@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ball Pop Game (TON Edition)</title>
+    <title>Ball Pop Game</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -22,6 +22,7 @@
             overflow: hidden;
             border: 2px solid #444;
             background: #2a2a2a;
+            transition: background 0.3s;
         }
         .ball {
             position: absolute;
@@ -41,7 +42,7 @@
         #controls {
             padding: 10px;
         }
-        #score, #timer, #highScore, #dangerColor {
+        #score, #timer, #highScore, #dangerColor, #bonusColor {
             font-size: 18px;
             margin: 5px;
         }
@@ -56,15 +57,15 @@
             font-size: 14px;
         }
         .danger {
-            animation: pulse 1s infinite;
+            animation: pulse-danger 1s infinite;
         }
-        @keyframes pulse {
+        .bonus {
+            animation: pulse-bonus 1s infinite;
+        }
+        @keyframes pulse-danger {
             0% { box-shadow: 0 0 5px red; }
             50% { box-shadow: 0 0 20px red; }
             100% { box-shadow: 0 0 5px red; }
-        }
-		.bonus {
-            animation: pulse-bonus 1s infinite;
         }
         @keyframes pulse-bonus {
             0% { box-shadow: 0 0 5px #00FF00; }
@@ -94,9 +95,9 @@
         }
         /* Анимация смены цвета */
         @keyframes flash {
-            0% { opacity: 0.7; }
-            50% { opacity: 0.3; }
-            100% { opacity: 1; }
+            0% { background-color: inherit; }
+            50% { background-color: var(--flash-color); }
+            100% { background-color: inherit; }
         }
         .flash-effect {
             animation: flash 0.5s ease-out;
@@ -110,9 +111,9 @@
         <div id="timer">Время: 60</div>
         <div id="highScore">Лучший счёт: 0</div>
         <div id="dangerColor">Не лопать: <span style="color: red;">Красный</span></div>
+        <div id="bonusColor">Бонусный шар: <span style="color: #00FF00;">Зелёный</span></div>
         <button id="startBtn">Начать игру</button>
         <button id="helpBtn">Инструкция</button>
-        <button id="globalRankBtn">Рейтинг</button>
     </div>
     <div id="game"></div>
 
@@ -122,6 +123,7 @@
             <h2>Правила игры</h2>
             <p>🔹 Цель: лопай шарики, но избегай <span id="helpDangerColor" style="color: red;">запрещённого цвета</span>!</p>
             <p>🔹 Запрещённый цвет меняется случайно.</p>
+            <p>🔹 <span id="helpBonusColor" style="color: #00FF00;">Бонусные шары</span> дают +1 секунду к таймеру.</p>
             <p>🔹 Если лопнешь запрещённый — игра окончена.</p>
             <button id="closeHelp" style="margin-top: 20px;">Понятно</button>
         </div>
@@ -136,21 +138,14 @@
         </div>
     </div>
 
-    <!-- Модальное окно рейтинга -->
-    <div id="rankModal" class="modal">
-        <div class="modal-content">
-            <h2 id="rankTitle">Общий рейтинг</h2>
-            <ol id="rankList"></ol>
-            <button id="closeRank" style="margin-top: 20px;">Закрыть</button>
-        </div>
-    </div>
-
     <script>
         // Конфигурация игры
         const GAME_DURATION = 60;
         const BALL_SIZE_MIN = 30;
         const BALL_SIZE_MAX = 60;
-        const ballColors = [
+        
+        // Все доступные цвета
+        const allColors = [
             "#FF0000", // Красный
             "#0000FF", // Синий
             "#00FF00", // Зелёный
@@ -158,20 +153,13 @@
             "#FFFFFF", // Белый
             "#800080"  // Фиолетовый
         ];
-        const dangerColorNames = {
-            "#FF0000": "Красный",
-            "#0000FF": "Синий",
-            "#00FF00": "Зелёный",
-            "#FFFF00": "Жёлтый",
-            "#FFFFFF": "Белый",
-            "#800080": "Фиолетовый"
-        };
 
         // Переменные игры
         let score = 0;
         let timeLeft = GAME_DURATION;
         let highScore = localStorage.getItem("highScore") || 0;
         let currentDangerColor = "#FF0000"; // Начинаем с красного
+        let currentBonusColor = "#00FF00";  // Начинаем с зелёного
         let isGameRunning = false;
         let gameInterval, timerInterval, colorChangeInterval;
 
@@ -181,35 +169,31 @@
         const timerDisplay = document.getElementById("timer");
         const highScoreDisplay = document.getElementById("highScore");
         const dangerColorDisplay = document.querySelector("#dangerColor span");
-        const startBtn = document.getElementById("startBtn");
-        const helpBtn = document.getElementById("helpBtn");
-        const globalRankBtn = document.getElementById("globalRankBtn");
-        const finalScoreDisplay = document.getElementById("finalScore");
-        const gameOverModal = document.getElementById("gameOverModal");
-        const rankList = document.getElementById("rankList");
+        const bonusColorDisplay = document.querySelector("#bonusColor span");
+        const helpDangerColor = document.getElementById("helpDangerColor");
+        const helpBonusColor = document.getElementById("helpBonusColor");
 
         // Инициализация
-        highScoreDisplay.textContent = `Лучший счёт: ${highScore}`;
-        document.getElementById("helpDangerColor").style.color = currentDangerColor;
+        highScoreDisplay.textContent = highScore;
+        dangerColorDisplay.textContent = "Красный";
+        dangerColorDisplay.style.color = currentDangerColor;
+        bonusColorDisplay.textContent = "Зелёный";
+        bonusColorDisplay.style.color = currentBonusColor;
+        helpDangerColor.style.color = currentDangerColor;
+        helpBonusColor.style.color = currentBonusColor;
 
         // Запуск игры
-        startBtn.addEventListener("click", startGame);
-        helpBtn.addEventListener("click", showHelp);
-        globalRankBtn.addEventListener("click", loadAndShowRanking);
+        document.getElementById("startBtn").addEventListener("click", startGame);
+        document.getElementById("helpBtn").addEventListener("click", showHelp);
         document.getElementById("closeHelp").addEventListener("click", hideHelp);
         document.getElementById("closeGameOver").addEventListener("click", hideGameOver);
-        document.getElementById("closeRank").addEventListener("click", hideRank);
-
-        // ========================
-        // ОСНОВНЫЕ ФУНКЦИИ ИГРЫ
-        // ========================
 
         function startGame() {
             if (isGameRunning) return;
             
             resetGame();
             isGameRunning = true;
-            startBtn.disabled = true;
+            document.getElementById("startBtn").disabled = true;
             
             // Таймер
             timerInterval = setInterval(() => {
@@ -222,11 +206,8 @@
             // Генерация шаров
             gameInterval = setInterval(createBall, 400);
             
-            // Смена запрещённого цвета
-            colorChangeInterval = setInterval(changeDangerColor, randomInt(5000, 10000));
-            
-            // Анимация начала игры
-            flashBackground(currentDangerColor);
+            // Смена цветов каждые 5-15 сек
+            colorChangeInterval = setInterval(changeColors, randomInt(5000, 15000));
         }
 
         function createBall() {
@@ -241,21 +222,22 @@
             
             // Определяем тип шара (20% - запрещённый, 15% - бонусный, 65% - обычный)
             const ballType = Math.random();
-            let ballColor;
+            let ballColor, isDanger = false, isBonus = false;
             
             if (ballType < 0.2) {
                 // Запрещённый шар
                 ballColor = currentDangerColor;
-                ball.dataset.danger = "true";
-                ball.classList.add("danger");
+                isDanger = true;
             } else if (ballType < 0.35) {
-                // Бонусный шар (+1 секунда)
-                ballColor = getRandomSafeColor(true);
-                ball.dataset.bonus = "true";
-                ball.classList.add("bonus");
+                // Бонусный шар
+                ballColor = currentBonusColor;
+                isBonus = true;
             } else {
-                // Обычный шар
-                ballColor = getRandomSafeColor(false);
+                // Обычный шар (любой цвет, кроме запрещённого и бонусного)
+                const availableColors = allColors.filter(color => 
+                    color !== currentDangerColor && color !== currentBonusColor
+                );
+                ballColor = availableColors[randomInt(0, availableColors.length - 1)];
             }
             
             ball.style.width = `${size}px`;
@@ -264,22 +246,61 @@
             ball.style.top = `${y}px`;
             ball.style.background = ballColor;
             
+            if (isDanger) {
+                ball.classList.add("danger");
+                ball.dataset.danger = "true";
+            } else if (isBonus) {
+                ball.classList.add("bonus");
+                ball.dataset.bonus = "true";
+            }
+            
             ball.addEventListener("click", handleBallClick);
             gameArea.appendChild(ball);
             
             setTimeout(() => {
                 if (ball.parentNode) ball.remove();
-            }, 1000);
+            }, 2000);
         }
 
-		// Получаем безопасный цвет (не совпадающий с запрещённым)
-        function getRandomSafeColor(forBonus) {
-            let availableColors = ballColors.filter(color => color !== currentDangerColor);
-            if (forBonus) {
-                // Для бонусных шаров можно выбрать специальный цвет (например, всегда зелёный)
-                return "#00FF00"; // Зелёный для бонусов
-            }
-            return availableColors[Math.floor(Math.random() * availableColors.length)];
+        function changeColors() {
+            // Выбираем новый запрещённый цвет (не совпадающий с бонусным)
+            let newDangerColor;
+            do {
+                newDangerColor = allColors[randomInt(0, allColors.length - 1)];
+            } while (newDangerColor === currentBonusColor);
+            
+            // Выбираем новый бонусный цвет (не совпадающий с запрещённым)
+            let newBonusColor;
+            do {
+                newBonusColor = allColors[randomInt(0, allColors.length - 1)];
+            } while (newBonusColor === newDangerColor);
+            
+            // Обновляем цвета
+            currentDangerColor = newDangerColor;
+            currentBonusColor = newBonusColor;
+            
+            // Обновляем отображение
+            dangerColorDisplay.textContent = getColorName(currentDangerColor);
+            dangerColorDisplay.style.color = currentDangerColor;
+            bonusColorDisplay.textContent = getColorName(currentBonusColor);
+            bonusColorDisplay.style.color = currentBonusColor;
+            helpDangerColor.style.color = currentDangerColor;
+            helpBonusColor.style.color = currentBonusColor;
+            
+            // Анимация смены запрещённого цвета
+            flashBackground(currentDangerColor);
+        }
+
+        function getColorName(color) {
+            const names = {
+                "#FF0000": "Красный",
+                "#0000FF": "Синий",
+                "#00FF00": "Зелёный",
+                "#FFFF00": "Жёлтый",
+                "#FFFFFF": "Белый",
+                "#800080": "Фиолетовый"
+            };
+            return names[color] || color;
         }
 
         function handleBallClick(e) {
@@ -308,41 +329,12 @@
             }
         }
 
-        function handleSwipeStart(e) {
-            e.target.touchStartX = e.touches[0].clientX;
-            e.target.addEventListener("touchend", handleSwipeEnd);
-        }
-
-        function handleSwipeEnd(e) {
-            const ball = e.target;
-            const touchEndX = e.changedTouches[0].clientX;
-            
-            if (ball.dataset.danger === "true") {
-                if (Math.abs(touchEndX - ball.touchStartX) > 50) {
-                    changeDangerColor();
-                    ball.remove();
-                } else {
-                    endGame();
-                }
-            }
-        }
-
-        function changeDangerColor() {
-            const colors = Object.keys(dangerColorNames);
-            currentDangerColor = colors[Math.floor(Math.random() * colors.length)];
-            dangerColorDisplay.textContent = dangerColorNames[currentDangerColor];
-            dangerColorDisplay.style.color = currentDangerColor;
-            document.getElementById("helpDangerColor").style.color = currentDangerColor;
-            
-            flashBackground(currentDangerColor);
-        }
-
         function flashBackground(color) {
-            gameArea.style.backgroundColor = color;
-            gameArea.classList.add("flash-effect");
+            gameArea.style.setProperty('--flash-color', color);
+            gameArea.classList.add('flash-effect');
+            
             setTimeout(() => {
-                gameArea.style.backgroundColor = "#2a2a2a";
-                gameArea.classList.remove("flash-effect");
+                gameArea.classList.remove('flash-effect');
             }, 500);
         }
 
@@ -351,22 +343,17 @@
             clearInterval(gameInterval);
             clearInterval(timerInterval);
             clearInterval(colorChangeInterval);
-            startBtn.disabled = false;
+            document.getElementById("startBtn").disabled = false;
             
             // Показываем результат
-            finalScoreDisplay.textContent = `Ваш счёт: ${score}`;
-            gameOverModal.style.display = "block";
+            document.getElementById("finalScore").textContent = `Ваш счёт: ${score}`;
+            document.getElementById("gameOverModal").style.display = "block";
             
             // Обновляем рекорд
             if (score > highScore) {
                 highScore = score;
                 localStorage.setItem("highScore", highScore);
                 highScoreDisplay.textContent = `Лучший счёт: ${highScore}`;
-            }
-            
-            // Сохраняем в Firebase (если подключен)
-            if (window.firebase) {
-                saveScore(score);
             }
         }
 
@@ -376,132 +363,14 @@
             timeLeft = GAME_DURATION;
             scoreDisplay.textContent = `Очки: ${score}`;
             timerDisplay.textContent = `Время: ${timeLeft}`;
-            currentDangerColor = "red";
+            currentDangerColor = "#FF0000";
+            currentBonusColor = "#00FF00";
             dangerColorDisplay.textContent = "Красный";
-            dangerColorDisplay.style.color = "red";
-        }
-
-        // ========================
-        // FIREBASE И РЕЙТИНГ
-        // ========================
-
-        let firebaseInitialized = false;
-
-		async function initFirebase() {
-			if (firebaseInitialized) return true;
-			
-			try {
-				const firebaseAppScript = document.createElement('script');
-				firebaseAppScript.src = 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js';
-				
-				const firebaseDatabaseScript = document.createElement('script');
-				firebaseDatabaseScript.src = 'https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js';
-				
-				await new Promise((resolve) => {
-					firebaseAppScript.onload = () => {
-						document.head.appendChild(firebaseDatabaseScript);
-						firebaseDatabaseScript.onload = resolve;
-					};
-					document.head.appendChild(firebaseAppScript);
-				});
-				
-				firebase.initializeApp({
-					apiKey: "AIzaSyAaT1W1dxPT_wqXT0szzSEZB8Is17NEl88",
-					authDomain: "ballpopgame.firebaseapp.com",
-					databaseURL: "https://ballpopgame-default-rtdb.europe-west1.firebasedatabase.app",
-					projectId: "ballpopgame",
-					storageBucket: "ballpopgame.firebasestorage.app",
-					messagingSenderId: "126598438595",
-					appId: "1:126598438595:web:beeab536049e207f9e0c76"
-				});
-				
-				firebaseInitialized = true;
-				return true;
-			} catch (error) {
-				console.error("Ошибка инициализации Firebase:", error);
-				return false;
-			}
-		}
-
-        async function loadAndShowRanking() {
-			try {
-				const success = await initFirebase();
-				if (!success) {
-					rankList.innerHTML = "<li>Ошибка подключения</li>";
-					document.getElementById("rankModal").style.display = "block";
-					return;
-				}
-				await showGlobalRank();
-			} catch (error) {
-				console.error("Ошибка:", error);
-				rankList.innerHTML = "<li>Ошибка загрузки</li>";
-				document.getElementById("rankModal").style.display = "block";
-			}
-		}
-
-        async function saveScore(score) {
-			try {
-				const initialized = await initFirebase();
-				if (!initialized) return;
-				
-				const userId = Telegram.WebApp.initDataUnsafe?.user?.id || 
-							"anon_" + Math.random().toString(36).substr(2, 8);
-				
-				await firebase.database().ref('scores/' + userId).set({
-					username: "Player_" + randomInt(1000, 9999),
-					score: score,
-					timestamp: Date.now()
-				});
-				
-				console.log("Счёт сохранён!");
-			} catch (error) {
-				console.error("Ошибка сохранения:", error);
-			}
-		}
-
-		async function showGlobalRank() {
-			rankList.innerHTML = "<li>Загрузка...</li>";
-			
-			try {
-				const snapshot = await firebase.database().ref('scores')
-					.orderByChild('score')
-					.limitToLast(10)
-					.once('value');
-				
-				if (!snapshot.exists()) {
-					rankList.innerHTML = "<li>Рейтинг пуст</li>";
-					return;
-				}
-				
-				const scores = [];
-				snapshot.forEach((child) => {
-					scores.push({
-						score: child.val().score,
-						username: child.val().username || "Игрок"
-					});
-				});
-				
-				scores.sort((a, b) => b.score - a.score);
-				rankList.innerHTML = "";
-				
-				scores.forEach((item, index) => {
-					const li = document.createElement("li");
-					li.textContent = `${index + 1}. ${item.username}: ${item.score}`;
-					rankList.appendChild(li);
-				});
-				
-			} catch (error) {
-				console.error("Ошибка загрузки рейтинга:", error);
-				rankList.innerHTML = "<li>Ошибка загрузки</li>";
-			}
-		}
-
-        // ========================
-        // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-        // ========================
-
-        function randomInt(min, max) {
-            return Math.floor(Math.random() * (max - min + 1)) + min;
+            dangerColorDisplay.style.color = currentDangerColor;
+            bonusColorDisplay.textContent = "Зелёный";
+            bonusColorDisplay.style.color = currentBonusColor;
+            helpDangerColor.style.color = currentDangerColor;
+            helpBonusColor.style.color = currentBonusColor;
         }
 
         function showHelp() {
@@ -513,11 +382,11 @@
         }
 
         function hideGameOver() {
-            gameOverModal.style.display = "none";
+            document.getElementById("gameOverModal").style.display = "none";
         }
 
-        function hideRank() {
-            document.getElementById("rankModal").style.display = "none";
+        function randomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
         }
     </script>
 </body>
