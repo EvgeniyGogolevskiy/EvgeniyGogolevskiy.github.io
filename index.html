@@ -63,6 +63,14 @@
             50% { box-shadow: 0 0 20px red; }
             100% { box-shadow: 0 0 5px red; }
         }
+		.bonus {
+            animation: pulse-bonus 1s infinite;
+        }
+        @keyframes pulse-bonus {
+            0% { box-shadow: 0 0 5px #00FF00; }
+            50% { box-shadow: 0 0 20px #00FF00; }
+            100% { box-shadow: 0 0 5px #00FF00; }
+        }
         /* Модальные окна */
         .modal {
             display: none;
@@ -163,7 +171,7 @@
         let score = 0;
         let timeLeft = GAME_DURATION;
         let highScore = localStorage.getItem("highScore") || 0;
-        let currentDangerColor = "red";
+        let currentDangerColor = "#FF0000"; // Начинаем с красного
         let isGameRunning = false;
         let gameInterval, timerInterval, colorChangeInterval;
 
@@ -231,33 +239,32 @@
             const x = randomInt(0, gameArea.offsetWidth - size);
             const y = randomInt(0, gameArea.offsetHeight - size);
             
-            // 20% шанс, что шар будет запрещённого цвета
-            const isDanger = Math.random() < 0.2;
-            const color = isDanger ? currentDangerColor : 
-                         ballColors[randomInt(0, ballColors.length - 1)];
+            // Определяем тип шара (20% - запрещённый, 15% - бонусный, 65% - обычный)
+            const ballType = Math.random();
+            let ballColor;
             
-            // Убедимся, что обычный шар не совпадает с запрещённым цветом
-            let safeColor = color;
-            if (!isDanger) {
-                while (safeColor === currentDangerColor) {
-                    safeColor = ballColors[randomInt(0, ballColors.length - 1)];
-                }
+            if (ballType < 0.2) {
+                // Запрещённый шар
+                ballColor = currentDangerColor;
+                ball.dataset.danger = "true";
+                ball.classList.add("danger");
+            } else if (ballType < 0.35) {
+                // Бонусный шар (+1 секунда)
+                ballColor = getRandomSafeColor(true);
+                ball.dataset.bonus = "true";
+                ball.classList.add("bonus");
+            } else {
+                // Обычный шар
+                ballColor = getRandomSafeColor(false);
             }
             
             ball.style.width = `${size}px`;
             ball.style.height = `${size}px`;
             ball.style.left = `${x}px`;
             ball.style.top = `${y}px`;
-            ball.style.background = isDanger ? currentDangerColor : safeColor;
+            ball.style.background = ballColor;
             
-            if (isDanger) {
-                ball.classList.add("danger");
-                ball.dataset.danger = "true";
-            }
-            
-            ball.addEventListener("touchstart", handleSwipeStart);
-            ball.addEventListener("mousedown", handleBallClick);
-            
+            ball.addEventListener("click", handleBallClick);
             gameArea.appendChild(ball);
             
             setTimeout(() => {
@@ -265,12 +272,36 @@
             }, 1000);
         }
 
+		// Получаем безопасный цвет (не совпадающий с запрещённым)
+        function getRandomSafeColor(forBonus) {
+            let availableColors = ballColors.filter(color => color !== currentDangerColor);
+            if (forBonus) {
+                // Для бонусных шаров можно выбрать специальный цвет (например, всегда зелёный)
+                return "#00FF00"; // Зелёный для бонусов
+            }
+            return availableColors[Math.floor(Math.random() * availableColors.length)];
+        }
+
         function handleBallClick(e) {
             const ball = e.target;
             
             if (ball.dataset.danger === "true") {
                 endGame();
+            } else if (ball.dataset.bonus === "true") {
+                // Бонусный шар: +1 секунда
+                timeLeft++;
+                timerDisplay.textContent = `Время: ${timeLeft}`;
+                score++;
+                scoreDisplay.textContent = `Очки: ${score}`;
+                ball.remove();
+                
+                // Анимация добавления времени
+                timerDisplay.style.color = "#00FF00";
+                setTimeout(() => {
+                    timerDisplay.style.color = "white";
+                }, 300);
             } else {
+                // Обычный шар
                 score++;
                 scoreDisplay.textContent = `Очки: ${score}`;
                 ball.remove();
