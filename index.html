@@ -39,6 +39,19 @@
         .ball:active {
             transform: scale(0.9);
         }
+		.ball-pop {
+            position: absolute;
+            pointer-events: none;
+            transform-origin: center;
+            animation: pop 0.3s ease-out forwards;
+        }
+		.ball-fragment {
+            position: absolute;
+            background: white;
+            opacity: 0.7;
+            border-radius: 50%;
+            animation: fragment-fly 0.5s ease-out forwards;
+        }
         #controls {
             padding: 10px;
         }
@@ -71,6 +84,21 @@
             0% { box-shadow: 0 0 5px #00FF00; }
             50% { box-shadow: 0 0 20px #00FF00; }
             100% { box-shadow: 0 0 5px #00FF00; }
+        }
+		@keyframes pop {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+		@keyframes fragment-fly {
+            0% { transform: translate(0, 0) scale(1); opacity: 0.7; }
+            100% { transform: 
+                translate(
+                    calc(var(--tx) * 20px), 
+                    calc(var(--ty) * 20px)
+                ) scale(0); 
+                opacity: 0;
+            }
         }
         /* Модальные окна */
         .modal {
@@ -262,6 +290,16 @@
             }, 2000);
         }
 
+		const playPopSound = () => {
+            const sounds = [
+                new Audio('https://assets.mixkit.co/sfx/preview/mixkit-balloon-pop-with-delay-2354.mp3'),
+                new Audio('https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-explosion-2759.mp3')
+            ];
+            const sound = sounds[Math.floor(Math.random() * sounds.length)];
+            sound.volume = 0.3;
+            sound.play().catch(e => console.log("Автовоспроизведение заблокировано"));
+        };
+
         function changeColors() {
             // Выбираем новый запрещённый цвет (не совпадающий с бонусным)
             let newDangerColor;
@@ -307,26 +345,62 @@
             const ball = e.target;
             
             if (ball.dataset.danger === "true") {
+                createPopEffect(ball, true);
                 endGame();
             } else if (ball.dataset.bonus === "true") {
-                // Бонусный шар: +1 секунда
+                createPopEffect(ball, false);
                 timeLeft++;
                 timerDisplay.textContent = `Время: ${timeLeft}`;
                 score++;
                 scoreDisplay.textContent = `Очки: ${score}`;
-                ball.remove();
                 
                 // Анимация добавления времени
                 timerDisplay.style.color = "#00FF00";
-                setTimeout(() => {
-                    timerDisplay.style.color = "white";
-                }, 300);
+                setTimeout(() => timerDisplay.style.color = "white", 300);
             } else {
-                // Обычный шар
+                createPopEffect(ball, false);
                 score++;
                 scoreDisplay.textContent = `Очки: ${score}`;
-                ball.remove();
             }
+            
+            playPopSound();
+            ball.remove();
+        }
+
+		function createPopEffect(ball, isDanger) {
+            const rect = ball.getBoundingClientRect();
+            
+            // Основной эффект "лопания"
+            const popEffect = document.createElement("div");
+            popEffect.className = "ball-pop";
+            popEffect.style.left = `${rect.left}px`;
+            popEffect.style.top = `${rect.top}px`;
+            popEffect.style.width = `${rect.width}px`;
+            popEffect.style.height = `${rect.height}px`;
+            popEffect.style.background = ball.style.background;
+            popEffect.style.borderRadius = "50%";
+            popEffect.style.boxShadow = ball.style.boxShadow;
+            document.body.appendChild(popEffect);
+            
+            // Создаем "осколки"
+            for (let i = 0; i < 8; i++) {
+                const fragment = document.createElement("div");
+                fragment.className = "ball-fragment";
+                fragment.style.left = `${rect.left + rect.width/2}px`;
+                fragment.style.top = `${rect.top + rect.height/2}px`;
+                fragment.style.width = `${rect.width/4}px`;
+                fragment.style.height = `${rect.height/4}px`;
+                fragment.style.background = isDanger ? "#FF0000" : "#FFFFFF";
+                fragment.style.setProperty('--tx', Math.cos((i/4) * Math.PI * 2));
+                fragment.style.setProperty('--ty', Math.sin((i/4) * Math.PI * 2));
+                document.body.appendChild(fragment);
+                
+                // Удаляем осколки после анимации
+                setTimeout(() => fragment.remove(), 500);
+            }
+            
+            // Удаляем эффект после анимации
+            setTimeout(() => popEffect.remove(), 300);
         }
 
         function flashBackground(color) {
