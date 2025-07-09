@@ -368,19 +368,24 @@
         }
 
 		function createPopEffect(ball, isDanger) {
-            const rect = ball.getBoundingClientRect();
-            
-            // Основной эффект "лопания"
-            const popEffect = document.createElement("div");
-            popEffect.className = "ball-pop";
-            popEffect.style.left = `${rect.left}px`;
-            popEffect.style.top = `${rect.top}px`;
-            popEffect.style.width = `${rect.width}px`;
-            popEffect.style.height = `${rect.height}px`;
-            popEffect.style.background = ball.style.background;
-            popEffect.style.borderRadius = "50%";
-            popEffect.style.boxShadow = ball.style.boxShadow;
-            document.body.appendChild(popEffect);
+			// Получаем позицию относительно игрового поля
+			const gameRect = gameArea.getBoundingClientRect();
+			const ballRect = ball.getBoundingClientRect();
+			
+			// Пересчитываем координаты
+			const x = ballRect.left - gameRect.left;
+			const y = ballRect.top - gameRect.top;
+			
+			// Создаем эффект
+			const popEffect = document.createElement("div");
+			popEffect.className = "ball-pop";
+			popEffect.style.left = `${x}px`;
+			popEffect.style.top = `${y}px`;
+			popEffect.style.width = `${ballRect.width}px`;
+			popEffect.style.height = `${ballRect.height}px`;
+			popEffect.style.background = ball.style.background;
+			popEffect.style.position = 'absolute'; // Важно!
+			gameArea.appendChild(popEffect); // Добавляем в игровое поле, а не в body
             
             // Создаем "осколки"
             for (let i = 0; i < 8; i++) {
