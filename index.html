@@ -367,46 +367,46 @@
             ball.remove();
         }
 
-		function createPopEffect(ball, isDanger) {
-			// Получаем позицию относительно игрового поля
-			const gameRect = gameArea.getBoundingClientRect();
-			const ballRect = ball.getBoundingClientRect();
-			
-			// Пересчитываем координаты
-			const x = ballRect.left - gameRect.left;
-			const y = ballRect.top - gameRect.top;
-			
-			// Создаем эффект
-			const popEffect = document.createElement("div");
-			popEffect.className = "ball-pop";
-			popEffect.style.left = `${x}px`;
-			popEffect.style.top = `${y}px`;
-			popEffect.style.width = `${ballRect.width}px`;
-			popEffect.style.height = `${ballRect.height}px`;
-			popEffect.style.background = ball.style.background;
-			popEffect.style.position = 'absolute'; // Важно!
-			gameArea.appendChild(popEffect); // Добавляем в игровое поле, а не в body
-            
-            // Создаем "осколки"
-            for (let i = 0; i < 8; i++) {
-                const fragment = document.createElement("div");
-                fragment.className = "ball-fragment";
-                fragment.style.left = `${rect.left + rect.width/2}px`;
-                fragment.style.top = `${rect.top + rect.height/2}px`;
-                fragment.style.width = `${rect.width/4}px`;
-                fragment.style.height = `${rect.height/4}px`;
-                fragment.style.background = isDanger ? "#FF0000" : "#FFFFFF";
-                fragment.style.setProperty('--tx', Math.cos((i/4) * Math.PI * 2));
-                fragment.style.setProperty('--ty', Math.sin((i/4) * Math.PI * 2));
-                document.body.appendChild(fragment);
-                
-                // Удаляем осколки после анимации
-                setTimeout(() => fragment.remove(), 500);
-            }
-            
-            // Удаляем эффект после анимации
-            setTimeout(() => popEffect.remove(), 300);
-        }
+		    function createPopEffect(ball, isDanger) {
+				// Получаем позицию относительно родителя (игрового поля)
+				const rect = ball.getBoundingClientRect();
+				const parentRect = ball.parentNode.getBoundingClientRect();
+				
+				const x = rect.left - parentRect.left;
+				const y = rect.top - parentRect.top;
+				
+				const popEffect = document.createElement("div");
+				popEffect.className = "ball-pop";
+				popEffect.style.left = `${x}px`;
+				popEffect.style.top = `${y}px`;
+				popEffect.style.width = `${rect.width}px`;
+				popEffect.style.height = `${rect.height}px`;
+				popEffect.style.background = ball.style.background;
+				popEffect.style.borderRadius = "50%";
+				
+				// Важно: добавляем в тот же контейнер, где был шар
+				ball.parentNode.appendChild(popEffect);
+				
+				// Создаем "осколки"
+				for (let i = 0; i < 8; i++) {
+					const fragment = document.createElement("div");
+					fragment.className = "ball-fragment";
+					fragment.style.left = `${rect.left + rect.width/2}px`;
+					fragment.style.top = `${rect.top + rect.height/2}px`;
+					fragment.style.width = `${rect.width/4}px`;
+					fragment.style.height = `${rect.height/4}px`;
+					fragment.style.background = isDanger ? "#FF0000" : "#FFFFFF";
+					fragment.style.setProperty('--tx', Math.cos((i/4) * Math.PI * 2));
+					fragment.style.setProperty('--ty', Math.sin((i/4) * Math.PI * 2));
+					document.body.appendChild(fragment);
+					
+					// Удаляем осколки после анимации
+					setTimeout(() => fragment.remove(), 500);
+				}
+				
+				// Удаляем эффект после анимации
+				setTimeout(() => popEffect.remove(), 300);
+			}
 
         function flashBackground(color) {
             gameArea.style.setProperty('--flash-color', color);
