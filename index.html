@@ -45,13 +45,6 @@
             transform-origin: center;
             animation: pop 0.3s ease-out forwards;
         }
-		.ball-fragment {
-            position: absolute;
-            background: white;
-            opacity: 0.7;
-            border-radius: 50%;
-            animation: fragment-fly 0.5s ease-out forwards;
-        }
         #controls {
             padding: 10px;
         }
@@ -75,6 +68,37 @@
         .bonus {
             animation: pulse-bonus 1s infinite;
         }
+		/* Анимация основного "лопания" */
+		.ball-pop-animation {
+			position: absolute;
+			border-radius: 50%;
+			animation: pop 0.3s forwards;
+			z-index: 10;
+		}
+
+		/* Анимация осколков */
+		.ball-fragment {
+			position: absolute;
+			border-radius: 50%;
+			opacity: 0.9;
+			animation: 
+				fragment-fly 0.5s forwards,
+				fragment-fade 0.5s forwards;
+		}
+
+		@keyframes fragment-fly {
+			100% {
+				transform: 
+					translate(
+						calc(var(--tx) * 30px),
+						calc(var(--ty) * 30px)
+					);
+			}
+		}
+
+		@keyframes fragment-fade {
+			100% { opacity: 0; }
+		}
         @keyframes pulse-danger {
             0% { box-shadow: 0 0 5px red; }
             50% { box-shadow: 0 0 20px red; }
@@ -90,7 +114,7 @@
             50% { transform: scale(1.2); opacity: 0.8; }
             100% { transform: scale(0); opacity: 0; }
         }
-		@keyframes fragment-fly {
+		/* @keyframes fragment-fly {
             0% { transform: translate(0, 0) scale(1); opacity: 0.7; }
             100% { transform: 
                 translate(
@@ -99,7 +123,7 @@
                 ) scale(0); 
                 opacity: 0;
             }
-        }
+        } */
         /* Модальные окна */
         .modal {
             display: none;
@@ -368,37 +392,46 @@
         }
 
 		function createPopEffect(ball, isDanger) {
-			// 1. Получаем позицию ОТНОСИТЕЛЬНО gameArea
+			// 1. Получаем позицию относительно gameArea
 			const ballRect = ball.getBoundingClientRect();
 			const gameRect = gameArea.getBoundingClientRect();
-			
-			// 2. Корректировка для Telegram WebApp
 			const x = ballRect.left - gameRect.left;
 			const y = ballRect.top - gameRect.top;
-			
-			// 3. Создаем контейнер для анимации
-			const popContainer = document.createElement("div");
-			popContainer.style.position = "absolute";
-			popContainer.style.left = `${x}px`;
-			popContainer.style.top = `${y}px`;
-			popContainer.style.width = `${ball.offsetWidth}px`;
-			popContainer.style.height = `${ball.offsetHeight}px`;
-			popContainer.style.pointerEvents = "none";
-			
-			// 4. Основной эффект лопания
+
+			// 2. Основной эффект лопания
 			const popEffect = document.createElement("div");
-			popEffect.style.width = "100%";
-			popEffect.style.height = "100%";
+			popEffect.className = "ball-pop-animation";
+			popEffect.style.left = `${x}px`;
+			popEffect.style.top = `${y}px`;
+			popEffect.style.width = `${ball.offsetWidth}px`;
+			popEffect.style.height = `${ball.offsetHeight}px`;
 			popEffect.style.background = ball.style.background;
-			popEffect.style.borderRadius = "50%";
-			popEffect.style.animation = "pop 0.3s forwards";
-			
-			// 5. Добавляем в DOM
-			popContainer.appendChild(popEffect);
-			gameArea.appendChild(popContainer);
-			
-			// 6. Автоудаление через 300мс
-			setTimeout(() => popContainer.remove(), 300);
+			gameArea.appendChild(popEffect);
+
+			// 3. Создаём 8 осколков
+			for (let i = 0; i < 8; i++) {
+				const angle = (i / 4) * Math.PI; // Равномерное распределение
+				const fragment = document.createElement("div");
+				fragment.className = "ball-fragment";
+				
+				// Позиция в центре шара
+				fragment.style.left = `${x + ball.offsetWidth/2}px`;
+				fragment.style.top = `${y + ball.offsetHeight/2}px`;
+				
+				// Случайный размер и движение
+				const size = randomInt(5, ball.offsetWidth/4);
+				fragment.style.width = `${size}px`;
+				fragment.style.height = `${size}px`;
+				fragment.style.background = isDanger ? "#ff0000" : "#ffffff";
+				fragment.style.setProperty('--tx', Math.cos(angle) * 2);
+				fragment.style.setProperty('--ty', Math.sin(angle) * 2);
+				
+				gameArea.appendChild(fragment);
+				setTimeout(() => fragment.remove(), 500);
+			}
+
+			// 4. Удаляем эффекты через время
+			setTimeout(() => popEffect.remove(), 300);
 		}
 
         function flashBackground(color) {
