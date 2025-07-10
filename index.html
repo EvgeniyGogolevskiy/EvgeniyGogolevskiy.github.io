@@ -276,37 +276,26 @@
         }
 
         // Воспроизведение звука
-        function playSound(type) {
-			if (!window.AudioContext && !window.webkitAudioContext) {
-				useFallbackAudio(type);
-				return;
-			}
-
-			function useFallbackAudio(type) {
-				const audio = new Audio();
-				audio.src = {
-					normal: 'https://assets.mixkit.co/sfx/preview/mixkit-balloon-pop-with-delay-2354.mp3',
-					bonus: 'https://assets.mixkit.co/sfx/preview/mixkit-positive-interface-beep-221.mp3',
-					danger: 'https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-explosion-2759.mp3'
-				}[type];
+		function playSound(type) {
+			if (!isSoundEnabled) return;
+			
+			// Отправляем команду боту
+			if (window.Telegram && window.Telegram.WebApp) {
+				const soundMap = {
+					normal: 'ball_pop',
+					bonus: 'bonus_beep', 
+					danger: 'explosion'
+				};
 				
-				audio.volume = type === 'danger' ? 0.3 : 0.6;
-				audio.play().catch(e => console.log("Audio error:", e));
+				Telegram.WebApp.sendData(JSON.stringify({
+					command: 'play_sound',
+					sound: soundMap[type]
+				}));
+			} else {
+				// Фолбэк для браузера
+				playWebSound(type);
 			}
-
-            if (!isSoundEnabled || !sounds[type]) return;
-            
-            const source = audioContext.createBufferSource();
-            source.buffer = sounds[type];
-            
-            // Настройки для разных типов
-            const gainNode = audioContext.createGain();
-            gainNode.gain.value = type === 'danger' ? 0.3 : 0.2;
-            
-            source.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            source.start(0);
-        }
+		}
 
         // Кнопка включения звука
         document.getElementById('soundToggle').addEventListener('click', () => {
