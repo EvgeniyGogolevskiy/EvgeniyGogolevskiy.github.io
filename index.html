@@ -166,6 +166,7 @@
         <div id="bonusColor">Бонусный шар: <span style="color: #00FF00;">Зелёный</span></div>
         <button id="startBtn">Начать игру</button>
         <button id="helpBtn">Инструкция</button>
+		<button id="soundToggle" style="position: fixed; bottom: 10px; right: 10px; z-index: 1000;">🔇 Включить звук</button>
     </div>
     <div id="game"></div>
 
@@ -239,6 +240,67 @@
         document.getElementById("helpBtn").addEventListener("click", showHelp);
         document.getElementById("closeHelp").addEventListener("click", hideHelp);
         document.getElementById("closeGameOver").addEventListener("click", hideGameOver);
+
+
+        // звуки
+        let audioContext;
+        let sounds = {};
+        let isSoundEnabled = false;
+
+        // Инициализация аудио
+        function initAudio() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Загружаем звуки
+                loadSound('normal', 'https://assets.mixkit.co/sfx/preview/mixkit-balloon-pop-with-delay-2354.mp3');
+                loadSound('bonus', 'https://assets.mixkit.co/sfx/preview/mixkit-positive-interface-beep-221.mp3');
+                loadSound('danger', 'https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-explosion-2759.mp3');
+                
+                document.getElementById('soundToggle').textContent = '🔊 Звук включен';
+                isSoundEnabled = true;
+            } catch (e) {
+                console.error("Audio init error:", e);
+                document.getElementById('soundToggle').textContent = '🔇 Ошибка звука';
+            }
+        }
+
+        // Загрузка звука
+        function loadSound(name, url) {
+            fetch(url)
+                .then(response => response.arrayBuffer())
+                .then(data => audioContext.decodeAudioData(data))
+                .then(buffer => {
+                    sounds[name] = buffer;
+                });
+        }
+
+        // Воспроизведение звука
+        function playSound(type) {
+            if (!isSoundEnabled || !sounds[type]) return;
+            
+            const source = audioContext.createBufferSource();
+            source.buffer = sounds[type];
+            
+            // Настройки для разных типов
+            const gainNode = audioContext.createGain();
+            gainNode.gain.value = type === 'danger' ? 0.3 : 0.2;
+            
+            source.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            source.start(0);
+        }
+
+        // Кнопка включения звука
+        document.getElementById('soundToggle').addEventListener('click', () => {
+            if (!audioContext) {
+                initAudio();
+            } else {
+                isSoundEnabled = !isSoundEnabled;
+                document.getElementById('soundToggle').textContent = 
+                    isSoundEnabled ? '🔊 Звук включен' : '🔇 Звук выключен';
+            }
+        });
 
         function startGame() {
             if (isGameRunning) return;
@@ -314,16 +376,6 @@
             }, 2000);
         }
 
-		const playPopSound = () => {
-            const sounds = [
-                new Audio('https://assets.mixkit.co/sfx/preview/mixkit-balloon-pop-with-delay-2354.mp3'),
-                new Audio('https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-explosion-2759.mp3')
-            ];
-            const sound = sounds[Math.floor(Math.random() * sounds.length)];
-            sound.volume = 0.3;
-            sound.play().catch(e => console.log("Автовоспроизведение заблокировано"));
-        };
-
         function changeColors() {
             // Выбираем новый запрещённый цвет (не совпадающий с бонусным)
             let newDangerColor;
@@ -369,9 +421,11 @@
             const ball = e.target;
             
             if (ball.dataset.danger === "true") {
+				playSound('danger');
                 createPopEffect(ball, true);
                 endGame();
             } else if (ball.dataset.bonus === "true") {
+				playSound('bonus');
                 createPopEffect(ball, false);
                 timeLeft++;
                 timerDisplay.textContent = `Время: ${timeLeft}`;
@@ -382,12 +436,12 @@
                 timerDisplay.style.color = "#00FF00";
                 setTimeout(() => timerDisplay.style.color = "white", 300);
             } else {
+				playSound('normal');
                 createPopEffect(ball, false);
                 score++;
                 scoreDisplay.textContent = `Очки: ${score}`;
             }
             
-            playPopSound();
             ball.remove();
         }
 
