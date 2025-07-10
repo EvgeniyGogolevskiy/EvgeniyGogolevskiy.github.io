@@ -166,7 +166,6 @@
         <div id="bonusColor">Бонусный шар: <span style="color: #00FF00;">Зелёный</span></div>
         <button id="startBtn">Начать игру</button>
         <button id="helpBtn">Инструкция</button>
-		<button id="unlockSound" style="position:fixed; bottom:20px; right:20px; z-index:1000; padding:10px;" onclick="initAudio()">🔇 Включить звук</button>
     </div>
     <div id="game"></div>
 
@@ -240,73 +239,6 @@
         document.getElementById("helpBtn").addEventListener("click", showHelp);
         document.getElementById("closeHelp").addEventListener("click", hideHelp);
         document.getElementById("closeGameOver").addEventListener("click", hideGameOver);
-
-
-        // звуки
-        let audioContext;
-        let sounds = {};
-        let isSoundEnabled = false;
-
-        // Инициализация аудио
-		function initAudio() {
-			// Показываем подсказку для пользователя
-			if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-				alert("Нажмите 'Разрешить' если браузер запросит доступ к звуку");
-			}
-			
-			// Создаем скрытый аудиоэлемент для разблокировки
-			const unlocker = new Audio();
-			unlocker.src = 'data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQ...';
-			unlocker.play().then(() => {
-				// Основная инициализация аудио
-				initWebAudio();
-			}).catch(e => {
-				console.log("Не удалось разблокировать аудио:", e);
-			});
-		}
-
-        // Загрузка звука
-        function loadSound(name, url) {
-            fetch(url)
-                .then(response => response.arrayBuffer())
-                .then(data => audioContext.decodeAudioData(data))
-                .then(buffer => {
-                    sounds[name] = buffer;
-                });
-        }
-
-        // Воспроизведение звука
-		function playSound(type) {
-			if (!isSoundEnabled) return;
-			
-			// Отправляем команду боту
-			if (window.Telegram && window.Telegram.WebApp) {
-				const soundMap = {
-					normal: 'ball_pop',
-					bonus: 'bonus_beep', 
-					danger: 'explosion'
-				};
-				
-				Telegram.WebApp.sendData(JSON.stringify({
-					command: 'play_sound',
-					sound: soundMap[type]
-				}));
-			} else {
-				// Фолбэк для браузера
-				playWebSound(type);
-			}
-		}
-
-        // Кнопка включения звука
-        document.getElementById('soundToggle').addEventListener('click', () => {
-            if (!audioContext) {
-                initAudio();
-            } else {
-                isSoundEnabled = !isSoundEnabled;
-                document.getElementById('soundToggle').textContent = 
-                    isSoundEnabled ? '🔊 Звук включен' : '🔇 Звук выключен';
-            }
-        });
 
         function startGame() {
             if (isGameRunning) return;
@@ -427,11 +359,9 @@
             const ball = e.target;
             
             if (ball.dataset.danger === "true") {
-				playSound('danger');
                 createPopEffect(ball, true);
                 endGame();
             } else if (ball.dataset.bonus === "true") {
-				playSound('bonus');
                 createPopEffect(ball, false);
                 timeLeft++;
                 timerDisplay.textContent = `Время: ${timeLeft}`;
@@ -442,7 +372,6 @@
                 timerDisplay.style.color = "#00FF00";
                 setTimeout(() => timerDisplay.style.color = "white", 300);
             } else {
-				playSound('normal');
                 createPopEffect(ball, false);
                 score++;
                 scoreDisplay.textContent = `Очки: ${score}`;
