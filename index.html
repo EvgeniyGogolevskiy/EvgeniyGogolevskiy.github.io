@@ -166,7 +166,7 @@
         <div id="bonusColor">Бонусный шар: <span style="color: #00FF00;">Зелёный</span></div>
         <button id="startBtn">Начать игру</button>
         <button id="helpBtn">Инструкция</button>
-		<button id="soundToggle" style="position: fixed; bottom: 10px; right: 10px; z-index: 1000;">🔇 Включить звук</button>
+		<button id="unlockSound" style="position:fixed; bottom:20px; right:20px; z-index:1000; padding:10px;" onclick="initAudio()">🔇 Включить звук</button>
     </div>
     <div id="game"></div>
 
@@ -248,22 +248,22 @@
         let isSoundEnabled = false;
 
         // Инициализация аудио
-        function initAudio() {
-            try {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                
-                // Загружаем звуки
-                loadSound('normal', 'https://assets.mixkit.co/sfx/preview/mixkit-balloon-pop-with-delay-2354.mp3');
-                loadSound('bonus', 'https://assets.mixkit.co/sfx/preview/mixkit-positive-interface-beep-221.mp3');
-                loadSound('danger', 'https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-explosion-2759.mp3');
-                
-                document.getElementById('soundToggle').textContent = '🔊 Звук включен';
-                isSoundEnabled = true;
-            } catch (e) {
-                console.error("Audio init error:", e);
-                document.getElementById('soundToggle').textContent = '🔇 Ошибка звука';
-            }
-        }
+		function initAudio() {
+			// Показываем подсказку для пользователя
+			if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+				alert("Нажмите 'Разрешить' если браузер запросит доступ к звуку");
+			}
+			
+			// Создаем скрытый аудиоэлемент для разблокировки
+			const unlocker = new Audio();
+			unlocker.src = 'data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQ...';
+			unlocker.play().then(() => {
+				// Основная инициализация аудио
+				initWebAudio();
+			}).catch(e => {
+				console.log("Не удалось разблокировать аудио:", e);
+			});
+		}
 
         // Загрузка звука
         function loadSound(name, url) {
@@ -277,6 +277,23 @@
 
         // Воспроизведение звука
         function playSound(type) {
+			if (!window.AudioContext && !window.webkitAudioContext) {
+				useFallbackAudio(type);
+				return;
+			}
+
+			function useFallbackAudio(type) {
+				const audio = new Audio();
+				audio.src = {
+					normal: 'https://assets.mixkit.co/sfx/preview/mixkit-balloon-pop-with-delay-2354.mp3',
+					bonus: 'https://assets.mixkit.co/sfx/preview/mixkit-positive-interface-beep-221.mp3',
+					danger: 'https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-explosion-2759.mp3'
+				}[type];
+				
+				audio.volume = type === 'danger' ? 0.3 : 0.6;
+				audio.play().catch(e => console.log("Audio error:", e));
+			}
+
             if (!isSoundEnabled || !sounds[type]) return;
             
             const source = audioContext.createBufferSource();
