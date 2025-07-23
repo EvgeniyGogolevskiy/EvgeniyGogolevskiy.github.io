@@ -1,3 +1,17 @@
+window.addEventListener("DOMContentLoaded", () => {
+    const tg = window.Telegram.WebApp;
+    tg.ready(); // Сообщает Telegram, что WebApp готов
+
+    const user = tg.initDataUnsafe?.user;
+    
+    if (user) {
+        console.log("Пользователь:", user);
+        alert(`Привет, ${user.first_name}!`);
+    } else {
+        alert("WebApp API не работает. Запусти через Telegram.");
+    }
+});
+
 // Конфигурация игры
 const GAME_DURATION = 60;
 const BALL_SIZE_MIN = 30;
