@@ -27,7 +27,7 @@ window.addEventListener("DOMContentLoaded", () => {
 	// Переменные игры
 	let score = 0;
 	let timeLeft = GAME_DURATION;
-	let highScore = localStorage.getItem("highScore") || 0;
+	let highscore = localStorage.getItem("highscore") || 0;
 	let currentDangerColor = "#FF0000"; // Начинаем с красного
 	let currentBonusColor = "#00FF00";  // Начинаем с зелёного
 	let isGameRunning = false;
@@ -37,14 +37,14 @@ window.addEventListener("DOMContentLoaded", () => {
 	const gameArea = document.getElementById("game");
 	const scoreDisplay = document.getElementById("score");
 	const timerDisplay = document.getElementById("timer");
-	const highScoreDisplay = document.getElementById("highScore");
+	const highscoreDisplay = document.getElementById("highscore");
 	const dangerColorDisplay = document.querySelector("#dangerColor span");
 	const bonusColorDisplay = document.querySelector("#bonusColor span");
 	const helpDangerColor = document.getElementById("helpDangerColor");
 	const helpBonusColor = document.getElementById("helpBonusColor");
 
 	// Инициализация
-	highScoreDisplay.textContent = highScore;
+	highscoreDisplay.textContent = highscore;
 	dangerColorDisplay.textContent = "Красный";
 	dangerColorDisplay.style.color = currentDangerColor;
 	bonusColorDisplay.textContent = "Зелёный";
@@ -262,10 +262,10 @@ window.addEventListener("DOMContentLoaded", () => {
 		document.getElementById("gameOverModal").style.display = "block";
 		
 		// Обновляем рекорд
-		if (score > highScore) {
-			highScore = score;
-			localStorage.setItem("highScore", highScore);
-			highScoreDisplay.textContent = `Лучший счёт: ${highScore}`;
+		if (score > highscore) {
+			highscore = score;
+			localStorage.setItem("highscore", highscore);
+			highscoreDisplay.textContent = `Лучший счёт: ${highscore}`;
 		}
 	}
 
