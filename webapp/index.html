@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BubbleTap Game</title>
+  <link rel="stylesheet" href="./styles/style.css" />
+</head>
+<body>
+  <div id="start-screen">
+    <h1>BubbleTap</h1>
+    <button id="play-button">Играть</button>
+  </div>
+
+  <div id="game-screen" class="hidden">
+    <div id="hud">
+      <div id="timer">60</div>
+      <div id="score">0</div>
+    </div>
+    <div id="game-field"></div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
