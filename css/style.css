@@ -41,7 +41,7 @@ body {
 #controls {
 	padding: 10px;
 }
-#score, #timer, #highscore, #dangerColor, #bonusColor {
+#score, #timer, #highScore, #dangerColor, #bonusColor {
 	font-size: 18px;
 	margin: 5px;
 }
