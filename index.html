@@ -1,25 +1,45 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BubbleTap Game</title>
-  <link rel="stylesheet" href="./styles/style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ball Pop Game</title>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <div id="start-screen">
-    <h1>BubbleTap</h1>
-    <button id="play-button">Играть</button>
-  </div>
-
-  <div id="game-screen" class="hidden">
-    <div id="hud">
-      <div id="timer">60</div>
-      <div id="score">0</div>
+    <h1>Ball Pop Game</h1>
+    <div id="controls">
+        <div id="score">Очки: 0</div>
+        <div id="timer">Время: 60</div>
+        <div id="highScore">Лучший счёт: 0</div>
+        <div id="dangerColor">Не лопать: <span style="color: red;">Красный</span></div>
+        <div id="bonusColor">Бонусный шар: <span style="color: #00FF00;">Зелёный</span></div>
+        <button id="startBtn">Начать игру</button>
+        <button id="helpBtn">Инструкция</button>
     </div>
-    <div id="game-field"></div>
-  </div>
+    <div id="game"></div>
 
-  <script type="module" src="./src/main.js"></script>
+    <!-- Модальное окно инструкции -->
+    <div id="helpModal" class="modal">
+        <div class="modal-content">
+            <h2>Правила игры</h2>
+            <p>🔹 Цель: лопай шарики, но избегай <span id="helpDangerColor" style="color: red;">запрещённого цвета</span>!</p>
+            <p>🔹 Запрещённый цвет меняется случайно.</p>
+            <p>🔹 <span id="helpBonusColor" style="color: #00FF00;">Бонусные шары</span> дают +1 секунду к таймеру.</p>
+            <p>🔹 Если лопнешь запрещённый — игра окончена.</p>
+            <button id="closeHelp" style="margin-top: 20px;">Понятно</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно Game Over -->
+    <div id="gameOverModal" class="modal">
+        <div class="modal-content">
+            <h2>Игра окончена!</h2>
+            <p id="finalScore">Ваш счёт: 0</p>
+            <button id="closeGameOver" style="margin-top: 20px;">OK</button>
+        </div>
+    </div>
+
+    <script src="js/game.js"></script>
 </body>
 </html>
