@@ -41,7 +41,7 @@ body {
 #controls {
 	padding: 10px;
 }
-#score, #timer, #highScore, #dangerColor, #bonusColor {
+#score, #timer, #highscore, #dangerColor, #bonusColor {
 	font-size: 18px;
 	margin: 5px;
 }
@@ -107,7 +107,7 @@ button {
 	50% { transform: scale(1.2); opacity: 0.8; }
 	100% { transform: scale(0); opacity: 0; }
 }
-/* @keyframes fragment-fly {
+@keyframes fragment-fly {
 	0% { transform: translate(0, 0) scale(1); opacity: 0.7; }
 	100% { transform: 
 		translate(
@@ -116,7 +116,7 @@ button {
 		) scale(0); 
 		opacity: 0;
 	}
-} */
+}
 /* Модальные окна */
 .modal {
 	display: none;
