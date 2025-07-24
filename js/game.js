@@ -256,16 +256,44 @@ window.addEventListener("DOMContentLoaded", () => {
 		clearInterval(timerInterval);
 		clearInterval(colorChangeInterval);
 		document.getElementById("startBtn").disabled = false;
-		
+	
 		// Показываем результат
 		document.getElementById("finalScore").textContent = `Ваш счёт: ${score}`;
 		document.getElementById("gameOverModal").style.display = "block";
-		
+	
 		// Обновляем рекорд
 		if (score > highScore) {
 			highScore = score;
 			localStorage.setItem("highScore", highScore);
 			highScoreDisplay.textContent = `Лучший счёт: ${highScore}`;
+		}
+	
+		// === Отправка результата на сервер (если есть Telegram WebApp) ===
+		if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe?.user) {
+			const user = Telegram.WebApp.initDataUnsafe.user;
+	
+			const payload = {
+				telegramId: user.id,
+				name: user.first_name || "Игрок",
+				score: score
+			};
+	
+			fetch("http://localhost:3000/submit-score", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json"
+				},
+				body: JSON.stringify(payload)
+			})
+			.then(res => res.json())
+			.then(data => {
+				console.log("✔ Очки отправлены:", data);
+			})
+			.catch(err => {
+				console.error("❌ Ошибка при отправке очков:", err);
+			});
+		} else {
+			console.warn("⚠️ Telegram WebApp API недоступен, очки не отправлены");
 		}
 	}
 
