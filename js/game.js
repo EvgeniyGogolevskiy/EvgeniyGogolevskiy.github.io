@@ -8,6 +8,8 @@ window.addEventListener("DOMContentLoaded", () => {
     } else {
         alert("WebApp API не работает. Запусти через Telegram.");
     }
+	
+	fetchLeaderboard();
 
 	// Конфигурация игры
 	const GAME_DURATION = 60;
@@ -288,6 +290,9 @@ window.addEventListener("DOMContentLoaded", () => {
 			.then(res => res.json())
 			.then(data => {
 				console.log("✔ Очки отправлены:", data);
+	
+				// Обновляем таблицу лидеров после успешной отправки
+				fetchLeaderboard();
 			})
 			.catch(err => {
 				console.error("❌ Ошибка при отправке очков:", err);
@@ -329,3 +334,21 @@ window.addEventListener("DOMContentLoaded", () => {
 		return Math.floor(Math.random() * (max - min + 1)) + min;
 	}
 });
+
+function fetchLeaderboard() {
+	fetch("http://localhost:3000/leaderboard")
+		.then(response => response.json())
+		.then(data => {
+			const leaderboardList = document.getElementById("leaderboardList");
+			leaderboardList.innerHTML = "";
+
+			data.forEach(entry => {
+				const li = document.createElement("li");
+				li.textContent = `${entry.name}: ${entry.score}`;
+				leaderboardList.appendChild(li);
+			});
+		})
+		.catch(err => {
+			console.error("❌ Ошибка загрузки таблицы лидеров:", err);
+		});
+}
