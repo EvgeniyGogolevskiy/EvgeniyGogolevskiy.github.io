@@ -55,7 +55,11 @@ window.addEventListener("DOMContentLoaded", () => {
 	helpBonusColor.style.color = currentBonusColor;
 
 	// Запуск игры
-	document.getElementById("startBtn").addEventListener("click", startGame);
+	document.getElementById("startBtn").addEventListener("click", async () => {
+		const ok = await checkAndUseAttempt();
+		if (!ok) return;
+		startGame();
+	});
 	document.getElementById("helpBtn").addEventListener("click", showHelp);
 	document.getElementById("closeHelp").addEventListener("click", hideHelp);
 	document.getElementById("closeGameOver").addEventListener("click", hideGameOver);
@@ -66,6 +70,36 @@ window.addEventListener("DOMContentLoaded", () => {
 	document.getElementById("closeRating").addEventListener("click", () => {
 		document.getElementById("ratingModal").style.display = "none";
 	});
+
+	async function checkAndUseAttempt() {
+		const userId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+		if (!userId) {
+			alert("Ошибка: пользователь Telegram не найден.");
+			return false;
+		}
+	
+		const response = await fetch("http://localhost:3000/attempts", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ userId })
+		});
+	
+		const result = await response.json();
+		if (!result.success) {
+			alert("❌ У вас закончились бесплатные попытки на сегодня!");
+			return false;
+		}
+	
+		return true;
+	}
+
+	async function updateAttemptsLeft() {
+		const userId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+		const response = await fetch(`http://localhost:3000/attempts-left?userId=${userId}`);
+		const result = await response.json();
+		document.getElementById("attemptsLeft").textContent =
+			`Попытки на сегодня: ${result.attemptsLeft}`;
+	}
 
 	function startGame() {
 		if (isGameRunning) return;
