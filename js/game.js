@@ -59,6 +59,13 @@ window.addEventListener("DOMContentLoaded", () => {
 	document.getElementById("helpBtn").addEventListener("click", showHelp);
 	document.getElementById("closeHelp").addEventListener("click", hideHelp);
 	document.getElementById("closeGameOver").addEventListener("click", hideGameOver);
+	document.getElementById("ratingBtn").addEventListener("click", () => {
+		document.getElementById("ratingModal").style.display = "block";
+		fetchLeaderboard(); // подгружаем данные
+	});
+	document.getElementById("closeRating").addEventListener("click", () => {
+		document.getElementById("ratingModal").style.display = "none";
+	});
 
 	function startGame() {
 		if (isGameRunning) return;

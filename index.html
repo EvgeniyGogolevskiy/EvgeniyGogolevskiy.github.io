@@ -16,12 +16,8 @@
         <div id="bonusColor">Бонусный шар: <span style="color: #00FF00;">Зелёный</span></div>
         <button id="startBtn">Начать игру</button>
         <button id="helpBtn">Инструкция</button>
+		<button id="ratingBtn">Рейтинг</button>
     </div>
-
-	<div id="leaderboard" style="margin-top: 30px;">
-		<h3>🏆 Таблица лидеров</h3>
-		<ol id="leaderboardList"></ol>
-	</div>
 
     <div id="game"></div>
 
@@ -45,6 +41,15 @@
             <button id="closeGameOver" style="margin-top: 20px;">OK</button>
         </div>
     </div>
+
+	<!-- Модальное окно Рейтинг -->
+	<div id="ratingModal" class="modal">
+		<div class="modal-content">
+			<h2>🏆 Таблица лидеров</h2>
+			<ol id="leaderboardList"></ol>
+			<button id="closeRating" style="margin-top: 20px;">Закрыть</button>
+		</div>
+	</div>
 
 	<script src="https://telegram.org/js/telegram-web-app.js"></script>
 	<script src="js/game.js"></script>
