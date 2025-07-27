@@ -70,6 +70,9 @@ window.addEventListener("DOMContentLoaded", () => {
 	document.getElementById("closeRating").addEventListener("click", () => {
 		document.getElementById("ratingModal").style.display = "none";
 	});
+	document.addEventListener("DOMContentLoaded", () => {
+		updateAttemptsLeft();
+	});
 
 	async function checkAndUseAttempt() {
 		const userId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
@@ -341,6 +344,7 @@ window.addEventListener("DOMContentLoaded", () => {
 		} else {
 			console.warn("⚠️ Telegram WebApp API недоступен, очки не отправлены");
 		}
+		updateAttemptsLeft();
 	}
 
 	function resetGame() {
