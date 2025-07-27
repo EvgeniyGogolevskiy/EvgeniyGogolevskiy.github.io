@@ -5,7 +5,6 @@ window.addEventListener("DOMContentLoaded", () => {
     const user = tg.initDataUnsafe?.user;
     if (user) {
         alert(`Привет, ${user.first_name}!`);
-		resetGame();
     } else {
         alert("WebApp API не работает. Запусти через Telegram.");
     }
