@@ -30,6 +30,7 @@ window.addEventListener("DOMContentLoaded", () => {
 	let score = 0;
 	let timeLeft = GAME_DURATION;
 	let highScore = localStorage.getItem("highScore") || 0;
+	let attemptsLeft = 3;
 	let currentDangerColor = "#FF0000"; // Начинаем с красного
 	let currentBonusColor = "#00FF00";  // Начинаем с зелёного
 	let isGameRunning = false;
@@ -40,6 +41,7 @@ window.addEventListener("DOMContentLoaded", () => {
 	const scoreDisplay = document.getElementById("score");
 	const timerDisplay = document.getElementById("timer");
 	const highScoreDisplay = document.getElementById("highScore");
+	const attemptsLeftDisplay = document.getElementById("attemptsLeft");
 	const dangerColorDisplay = document.querySelector("#dangerColor span");
 	const bonusColorDisplay = document.querySelector("#bonusColor span");
 	const helpDangerColor = document.getElementById("helpDangerColor");
@@ -47,6 +49,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
 	// Инициализация
 	highScoreDisplay.textContent = highScore;
+	attemptsLeftDisplay.textContent = attemptsLeft;
 	dangerColorDisplay.textContent = "Красный";
 	dangerColorDisplay.style.color = currentDangerColor;
 	bonusColorDisplay.textContent = "Зелёный";
@@ -313,6 +316,7 @@ window.addEventListener("DOMContentLoaded", () => {
 			localStorage.setItem("highScore", highScore);
 			highScoreDisplay.textContent = `Лучший счёт: ${highScore}`;
 		}
+		updateAttemptsLeft();
 	
 		// === Отправка результата на сервер (если есть Telegram WebApp) ===
 		if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe?.user) {
@@ -344,7 +348,6 @@ window.addEventListener("DOMContentLoaded", () => {
 		} else {
 			console.warn("⚠️ Telegram WebApp API недоступен, очки не отправлены");
 		}
-		updateAttemptsLeft();
 	}
 
 	function resetGame() {
@@ -352,6 +355,7 @@ window.addEventListener("DOMContentLoaded", () => {
 		score = 0;
 		timeLeft = GAME_DURATION;
 		scoreDisplay.textContent = `Очки: ${score}`;
+		highScoreDisplay.textContent = `Лучший счёт: ${highScore}`;
 		timerDisplay.textContent = `Время: ${timeLeft}`;
 		currentDangerColor = "#FF0000";
 		currentBonusColor = "#00FF00";
@@ -361,6 +365,7 @@ window.addEventListener("DOMContentLoaded", () => {
 		bonusColorDisplay.style.color = currentBonusColor;
 		helpDangerColor.style.color = currentDangerColor;
 		helpBonusColor.style.color = currentBonusColor;
+		attemptsLeftDisplay.textContent = `Попытки на сегодня: ${attemptsLeft}`
 	}
 
 	function showHelp() {
