@@ -14,7 +14,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
 	// Конфигурация игры
 	const GAME_DURATION = 60;
-	const BALL_SIZE_MIN = 30;
+	const BALL_SIZE_MIN = 40;
 	const BALL_SIZE_MAX = 60;
 	
 	// Все доступные цвета
@@ -31,7 +31,7 @@ window.addEventListener("DOMContentLoaded", () => {
 	let score = 0;
 	let timeLeft = GAME_DURATION;
 	let highScore = localStorage.getItem("highScore") || 0;
-	let attemptsLeft = 3;
+	let attemptsLeft = localStorage.getItem("attemptsLeft") || 3;
 	let currentDangerColor = "#FF0000"; // Начинаем с красного
 	let currentBonusColor = "#00FF00";  // Начинаем с зелёного
 	let isGameRunning = false;
@@ -49,8 +49,8 @@ window.addEventListener("DOMContentLoaded", () => {
 	const helpBonusColor = document.getElementById("helpBonusColor");
 
 	// Инициализация
-	highScoreDisplay.textContent = highScore;
-	attemptsLeftDisplay.textContent = attemptsLeft;
+	//highScoreDisplay.textContent = highScore;
+	//attemptsLeftDisplay.textContent = attemptsLeft;
 	dangerColorDisplay.textContent = "Красный";
 	dangerColorDisplay.style.color = currentDangerColor;
 	bonusColorDisplay.textContent = "Зелёный";
@@ -356,7 +356,6 @@ window.addEventListener("DOMContentLoaded", () => {
 		score = 0;
 		timeLeft = GAME_DURATION;
 		scoreDisplay.textContent = `Очки: ${score}`;
-		highScoreDisplay.textContent = `Лучший счёт: ${highScore}`;
 		timerDisplay.textContent = `Время: ${timeLeft}`;
 		currentDangerColor = "#FF0000";
 		currentBonusColor = "#00FF00";
@@ -366,7 +365,6 @@ window.addEventListener("DOMContentLoaded", () => {
 		bonusColorDisplay.style.color = currentBonusColor;
 		helpDangerColor.style.color = currentDangerColor;
 		helpBonusColor.style.color = currentBonusColor;
-		attemptsLeftDisplay.textContent = `Попытки на сегодня: ${attemptsLeft}`
 	}
 
 	function showHelp() {
