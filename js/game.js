@@ -29,8 +29,7 @@ window.addEventListener("DOMContentLoaded", () => {
 	// Переменные игры
 	let score = 0;
 	let timeLeft = GAME_DURATION;
-	let highScore = localStorage.getItem("highScore") || 0;
-	let attemptsLeft = localStorage.getItem("attemptsLeft") || 3;
+	let highScore = parseInt(localStorage.getItem("highScore")) || 0;
 	let currentDangerColor = "#FF0000"; // Начинаем с красного
 	let currentBonusColor = "#00FF00";  // Начинаем с зелёного
 	let isGameRunning = false;
@@ -41,15 +40,12 @@ window.addEventListener("DOMContentLoaded", () => {
 	const scoreDisplay = document.getElementById("score");
 	const timerDisplay = document.getElementById("timer");
 	const highScoreDisplay = document.getElementById("highScore");
-	const attemptsLeftDisplay = document.getElementById("attemptsLeft");
 	const dangerColorDisplay = document.querySelector("#dangerColor span");
 	const bonusColorDisplay = document.querySelector("#bonusColor span");
 	const helpDangerColor = document.getElementById("helpDangerColor");
 	const helpBonusColor = document.getElementById("helpBonusColor");
 
 	// Инициализация
-	//highScoreDisplay.textContent = highScore;
-	//attemptsLeftDisplay.textContent = attemptsLeft;
 	dangerColorDisplay.textContent = "Красный";
 	dangerColorDisplay.style.color = currentDangerColor;
 	bonusColorDisplay.textContent = "Зелёный";
