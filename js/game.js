@@ -31,7 +31,7 @@ window.addEventListener("DOMContentLoaded", () => {
 	// Переменные игры
 	let score = 0;
 	let timeLeft = GAME_DURATION;
-	let highScore = parseInt(localStorage.getItem("highScore")) || 0;
+	let highScore = 0;
 	let currentDangerColor = "#FF0000"; // Начинаем с красного
 	let currentBonusColor = "#00FF00";  // Начинаем с зелёного
 	let isGameRunning = false;
@@ -70,9 +70,6 @@ window.addEventListener("DOMContentLoaded", () => {
 	});
 	document.getElementById("closeRating").addEventListener("click", () => {
 		document.getElementById("ratingModal").style.display = "none";
-	});
-	document.addEventListener("DOMContentLoaded", () => {
-		updateAttemptsLeft();
 	});
 
 	async function checkAndUseAttempt() {
@@ -332,7 +329,6 @@ window.addEventListener("DOMContentLoaded", () => {
 		// Обновляем рекорд
 		if (score > highScore) {
 			highScore = score;
-			localStorage.setItem("highScore", highScore);
 			highScoreDisplay.textContent = `Лучший счёт: ${highScore}`;
 		}
 	
