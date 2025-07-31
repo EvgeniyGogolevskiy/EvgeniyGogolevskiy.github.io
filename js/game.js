@@ -8,6 +8,8 @@ window.addEventListener("DOMContentLoaded", () => {
     } else {
         alert("WebApp API не работает. Запусти через Telegram.");
     }
+
+	initUserStats();
 	
 	fetchLeaderboard();
 
@@ -95,12 +97,11 @@ window.addEventListener("DOMContentLoaded", () => {
 		return true;
 	}
 
-	async function updateAttemptsLeft() {
-		const userId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-		const response = await fetch(`http://localhost:3000/attempts-left?userId=${userId}`);
-		const result = await response.json();
-		document.getElementById("attemptsLeft").textContent =
-			`Попытки на сегодня: ${result.attemptsLeft}`;
+	function updateAttemptsLeftDisplay(attemptsLeft) {
+		const attemptsDisplay = document.getElementById("attemptsDisplay");
+		if (attemptsDisplay) {
+			attemptsDisplay.textContent = `Попытки на сегодня: ${attemptsLeft}`;
+		}
 	}
 
 	function startGame() {
@@ -295,7 +296,26 @@ window.addEventListener("DOMContentLoaded", () => {
 		}, 500);
 	}
 
-	function endGame() {
+	async function initUserStats() {
+		const userId = Telegram.WebApp.initDataUnsafe?.user?.id;
+		if (!userId) return;
+	
+		try {
+			const response = await fetch(`http://localhost:3000/user-stats?userId=${userId}`);
+			const data = await response.json();
+	
+			// Установим highScore
+			highScore = data.highScore || 0;
+			highScoreDisplay.textContent = `Лучший счёт: ${highScore}`;
+	
+			// Установим attemptsLeft
+			updateAttemptsLeftDisplay(data.attemptsLeft || 0);
+		} catch (err) {
+			console.error("Ошибка получения статистики пользователя:", err);
+		}
+	}
+
+	async function endGame() {
 		isGameRunning = false;
 		clearInterval(gameInterval);
 		clearInterval(timerInterval);
@@ -305,6 +325,9 @@ window.addEventListener("DOMContentLoaded", () => {
 		// Показываем результат
 		document.getElementById("finalScore").textContent = `Ваш счёт: ${score}`;
 		document.getElementById("gameOverModal").style.display = "block";
+
+		// Обновим статистику с сервера (best score и попытки)
+		await updateUserStats();
 	
 		// Обновляем рекорд
 		if (score > highScore) {
@@ -312,7 +335,6 @@ window.addEventListener("DOMContentLoaded", () => {
 			localStorage.setItem("highScore", highScore);
 			highScoreDisplay.textContent = `Лучший счёт: ${highScore}`;
 		}
-		updateAttemptsLeft();
 	
 		// === Отправка результата на сервер (если есть Telegram WebApp) ===
 		if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe?.user) {
@@ -395,4 +417,23 @@ function fetchLeaderboard() {
 		.catch(err => {
 			console.error("❌ Ошибка загрузки таблицы лидеров:", err);
 		});
+}
+
+async function updateUserStats() {
+	const userId = Telegram.WebApp.initDataUnsafe?.user?.id;
+	if (!userId) return;
+
+	try {
+		const response = await fetch(`http://localhost:3000/user-stats?userId=${userId}`);
+		const data = await response.json();
+
+		// Обновим лучший счёт
+		highScore = data.highScore || 0;
+		highScoreDisplay.textContent = `Лучший счёт: ${highScore}`;
+
+		// Обновим количество попыток
+		updateAttemptsLeftDisplay(data.attemptsLeft || 0);
+	} catch (err) {
+		console.error("Не удалось обновить статистику:", err);
+	}
 }
