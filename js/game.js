@@ -31,7 +31,7 @@ window.addEventListener("DOMContentLoaded", () => {
 	// Переменные игры
 	let score = 0;
 	let timeLeft = GAME_DURATION;
-	let highScore = 0;
+	//let highScore = 0;
 	let currentDangerColor = "#FF0000"; // Начинаем с красного
 	let currentBonusColor = "#00FF00";  // Начинаем с зелёного
 	let isGameRunning = false;
@@ -395,9 +395,8 @@ window.addEventListener("DOMContentLoaded", () => {
 	function randomInt(min, max) {
 		return Math.floor(Math.random() * (max - min + 1)) + min;
 	}
-});
 
-function fetchLeaderboard() {
+	function fetchLeaderboard() {
 	fetch("http://localhost:3000/leaderboard")
 		.then(response => response.json())
 		.then(data => {
@@ -413,23 +412,25 @@ function fetchLeaderboard() {
 		.catch(err => {
 			console.error("❌ Ошибка загрузки таблицы лидеров:", err);
 		});
-}
-
-async function updateUserStats() {
-	const userId = Telegram.WebApp.initDataUnsafe?.user?.id;
-	if (!userId) return;
-
-	try {
-		const response = await fetch(`http://localhost:3000/user-stats?userId=${userId}`);
-		const data = await response.json();
-
-		// Обновим лучший счёт
-		highScore = data.highScore || 0;
-		highScoreDisplay.textContent = `Лучший счёт: ${highScore}`;
-
-		// Обновим количество попыток
-		updateAttemptsLeftDisplay(data.attemptsLeft || 0);
-	} catch (err) {
-		console.error("Не удалось обновить статистику:", err);
 	}
-}
+
+	async function updateUserStats() {
+		const userId = Telegram.WebApp.initDataUnsafe?.user?.id;
+		if (!userId) return;
+
+		try {
+			const response = await fetch(`http://localhost:3000/user-stats?userId=${userId}`);
+			const data = await response.json();
+
+			// Обновим лучший счёт
+			highScore = data.highScore || 0;
+			highScoreDisplay.textContent = `Лучший счёт: ${highScore}`;
+
+			// Обновим количество попыток
+			updateAttemptsLeftDisplay(data.attemptsLeft || 0);
+		} catch (err) {
+			console.error("Не удалось обновить статистику:", err);
+		}
+	}
+
+});
