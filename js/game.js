@@ -11,8 +11,6 @@ window.addEventListener("DOMContentLoaded", () => {
 
 	initUserStats();
 	
-	fetchLeaderboard();
-
 	// Конфигурация игры
 	const GAME_DURATION = 60;
 	const BALL_SIZE_MIN = 40;
@@ -307,6 +305,17 @@ window.addEventListener("DOMContentLoaded", () => {
 	
 			// Установим attemptsLeft
 			updateAttemptsLeftDisplay(data.attemptsLeft || 0);
+	
+			// Заполним лидерборд (если есть)
+			if (Array.isArray(data.leaderboard)) {
+				const leaderboardList = document.getElementById("leaderboardList");
+				leaderboardList.innerHTML = "";
+				data.leaderboard.forEach(entry => {
+					const li = document.createElement("li");
+					li.textContent = `${entry.name}: ${entry.score}`;
+					leaderboardList.appendChild(li);
+				});
+			}
 		} catch (err) {
 			console.error("Ошибка получения статистики пользователя:", err);
 		}
@@ -397,21 +406,28 @@ window.addEventListener("DOMContentLoaded", () => {
 	}
 
 	function fetchLeaderboard() {
-	fetch("http://localhost:3000/leaderboard")
-		.then(response => response.json())
-		.then(data => {
-			const leaderboardList = document.getElementById("leaderboardList");
-			leaderboardList.innerHTML = "";
-
-			data.forEach(entry => {
-				const li = document.createElement("li");
-				li.textContent = `${entry.name}: ${entry.score}`;
-				leaderboardList.appendChild(li);
+		const userId = Telegram.WebApp.initDataUnsafe?.user?.id;
+		if (!userId) return;
+	
+		fetch(`http://localhost:3000/user-stats?userId=${userId}`)
+			.then(response => response.json())
+			.then(data => {
+				const leaderboardList = document.getElementById("leaderboardList");
+				leaderboardList.innerHTML = "";
+	
+				if (Array.isArray(data.leaderboard)) {
+					data.leaderboard.forEach(entry => {
+						const li = document.createElement("li");
+						li.textContent = `${entry.name}: ${entry.score}`;
+						leaderboardList.appendChild(li);
+					});
+				} else {
+					console.warn("Таблица лидеров отсутствует в ответе:", data);
+				}
+			})
+			.catch(err => {
+				console.error("❌ Ошибка загрузки таблицы лидеров:", err);
 			});
-		})
-		.catch(err => {
-			console.error("❌ Ошибка загрузки таблицы лидеров:", err);
-		});
 	}
 
 	async function updateUserStats() {
